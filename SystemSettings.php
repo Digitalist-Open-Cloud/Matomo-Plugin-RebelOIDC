@@ -352,8 +352,8 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
     private function createUseEmailAsUsernameSetting() : SystemSetting
     {
         return $this->makeSetting("useEmailAsUsername", $default = true, FieldConfig::TYPE_BOOL, function(FieldConfig $field) {
-            $field->title = Piwik::translate("LoginOIDC_SettingUseEmailAsUsername");
-            $field->description = Piwik::translate("LoginOIDC_SettingUseEmailAsUsernameHelp");
+            $field->title = Piwik::translate("RebelOIDC_SettingUseEmailAsUsername");
+            $field->description = Piwik::translate("RebelOIDC_SettingUseEmailAsUsernameHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_CHECKBOX;
         });
     }
