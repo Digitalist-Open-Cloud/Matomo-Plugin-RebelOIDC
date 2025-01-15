@@ -1,16 +1,20 @@
 # Rebel OIDC plugin for Matomo
 
-![CI Pipeline](https://github.com/Digitalist-Open-Cloud/Matomo-Plugin-RebelOIDC/actions/workflows/ci-pipeline.yml/badge.svg)
+![UNIT tests](https://github.com/Digitalist-Open-Cloud/Matomo-Plugin-RebelOIDC/actions/workflows/ci-pipeline.yml/badge.svg)
+![PHP Codesniffer](https://github.com/Digitalist-Open-Cloud/Matomo-Plugin-RebelOIDC/actions/workflows/phpcs.yml/badge.svg)
+![Semgrep OSS](https://github.com/Digitalist-Open-Cloud/Matomo-Plugin-RebelOIDC/actions/workflows/semgrep.yml/badge.svg)
 
 ## Description
 
-Login via third party authentication services.
+Login to Matomo with third party authentication services that provides Open ID Connect. Check in [FAQ](docs/faq.md) for details on how to connect.
 
 ## Installation
 
-Install it via Matomo Marketplace.
+Put the files from this repo in <MATOMO_INSTALLATION>/plugins/RebelOIDC and activate it.
 
-Alternatively put the files from this repo in <MATOMO_INSTALLATION>/plugins/RebelOIDC and activate it in the settings.
+## Fork
+
+This plugin is a fork of the [LoginOIDC](https://github.com/dominik-th/matomo-plugin-LoginOIDC) plugin.
 
 ## License
 
