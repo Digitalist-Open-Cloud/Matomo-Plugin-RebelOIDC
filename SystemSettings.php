@@ -22,126 +22,126 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
     /**
      * The disable superuser setting.
      *
-     * @var bool
+     * @var Setting
      */
     public $disableSuperuser;
 
     /**
      * The disable password confirmation setting.
      *
-     * @var bool
+     * @var Setting
      */
     public $disablePasswordConfirmation;
 
     /**
      * Whether the login procedure has to be initiated from the Matomo login page
      *
-     * @var bool
+     * @var Setting
      */
     public $disableDirectLoginUrl;
 
     /**
      * Whether new Matomo accounts should be created for unknown users
      *
-     * @var bool
+     * @var Setting
      */
     public $allowSignup;
 
     /**
      * Bypass 2nd factor when login with OIDC
      *
-     * @var bool
+     * @var Setting
      */
     public $bypassTwoFa;
 
     /**
      * Enable auto linking of accounts
      *
-     * @var bool
+     * @var Setting
      */
     public $autoLinking;
 
     /**
      * The name of the oauth provider, which is also shown on the login screen.
      *
-     * @var string
+     * @var Setting
      */
     public $authenticationName;
 
     /**
      * The url where the external service authenticates the user.
      *
-     * @var string
+     * @var Setting
      */
     public $authorizeUrl;
 
     /**
      * The url where an access token can be retreived (json response expected).
      *
-     * @var string
+     * @var Setting
      */
     public $tokenUrl;
 
     /**
      * The url where the external service provides the users unique id (json response expected).
      *
-     * @var string
+     * @var Setting
      */
     public $userinfoUrl;
 
     /**
      * The url where the OIDC provider will invalidate the users session.
      *
-     * @var string
+     * @var Setting
      */
     public $endSessionUrl;
 
     /**
      * The name of the unique user id field in $userinfoUrl response.
      *
-     * @var string
+     * @var Setting
      */
     public $userinfoId;
 
     /**
      * The client id given by the provider.
      *
-     * @var string
+     * @var Setting
      */
     public $clientId;
 
     /**
      * The client secret given by the provider.
      *
-     * @var string
+     * @var Setting
      */
     public $clientSecret;
 
     /**
      * The oauth scopes.
      *
-     * @var string
+     * @var Setting
      */
     public $scope;
 
     /**
      * The optional redirect uri override.
      *
-     * @var string
+     * @var Setting
      */
     public $redirectUriOverride;
 
     /**
      * The domains which are allowed to create accounts.
      *
-     * @var string
+     * @var Setting
      */
     public $allowedSignupDomains;
 
     /**
      * Initialize the plugin settings.
      *
-     * @return void
+     * @var Setting
      */
     protected function init()
     {
