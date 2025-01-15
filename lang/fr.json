@@ -1,5 +1,5 @@
 {
-    "LoginOIDC": {
+    "RebelOIDC": {
         "SettingDisableSuperuser": "Désactiver la connexion externe des Super Utilisateurs",
         "SettingDisableSuperuserHelp": "",
         "SettingDisableDirectLoginUrl": "Désactiver l'url de connexion directe",
@@ -36,7 +36,7 @@
         "AccountNotLinked": "Votre compte n'est actuellement pas lié.",
         "Link": "Lier ce compte",
         "Unlink": "Délier ce compte",
-        "ExceptionNotConfigured": "LoginOIDC n'a pas encore été configuré.",
+        "ExceptionNotConfigured": "RebelOIDC n'a pas encore été configuré.",
         "ExceptionStateMismatch": "Erreur d'état OAuth.",
         "ExceptionUnknownProvider": "Fournisseur OAuth inconnu.",
         "ExceptionInvalidResponse": "Réponse inattendue du service OAuth.",

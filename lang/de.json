@@ -1,5 +1,5 @@
 {
-    "LoginOIDC": {
+    "RebelOIDC": {
         "SettingDisableSuperuser": "Deaktiviere externen Login-Service für Superuser",
         "SettingDisableSuperuserHelp": "",
         "SettingDisablePasswordConfirmation": "Deaktiviere Passwortbestätigung",
@@ -38,7 +38,7 @@
         "AccountNotLinked": "Dein Account ist zur Zeit nicht verknüpft.",
         "Link": "Verknüpfe Account",
         "Unlink": "Verknüpfung auflösen",
-        "ExceptionNotConfigured": "LoginOIDC wurde noch nicht vollständig konfiguriert.",
+        "ExceptionNotConfigured": "RebelOIDC wurde noch nicht vollständig konfiguriert.",
         "ExceptionStateMismatch": "OAuth State Fehler.",
         "ExceptionUnknownProvider": "Unbekannter OAuth-Service.",
         "ExceptionInvalidResponse": "Unerwartete Antwort vom OAuth-Service.",

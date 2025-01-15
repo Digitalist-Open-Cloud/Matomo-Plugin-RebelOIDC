@@ -8,7 +8,7 @@
  *
  */
 
-namespace Piwik\Plugins\LoginOIDC;
+namespace Piwik\Plugins\RebelOIDC;
 
 use Piwik\AuthResult;
 use Piwik\Plugins\UsersManager\Model;

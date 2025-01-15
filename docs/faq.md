@@ -2,7 +2,7 @@
 
 **What is the callback url?**
 
-`http(s)://<YOUR_MATOMO_URL>/index.php?module=LoginOIDC&action=callback&provider=oidc`
+`http(s)://<YOUR_MATOMO_URL>/index.php?module=RebelOIDC&action=callback&provider=oidc`
 
 **Which providers can I use?**
 
@@ -19,7 +19,7 @@ If you change the OAuth provider and there could be user id collisions, you shou
 **Can I embed the Login button on another website?**
 
 You have to uncheck the `Disable direct login url` option in the settings.
-Afterwards you can link to `http(s)://<YOUR_MATOMO_URL>/index.php?module=LoginOIDC&action=signin&provider=oidc` and Matomo will redirect the client accordingly.
+Afterwards you can link to `http(s)://<YOUR_MATOMO_URL>/index.php?module=RebelOIDC&action=signin&provider=oidc` and Matomo will redirect the client accordingly.
 
 **Can I setup more than one provider?**
 
@@ -91,9 +91,9 @@ https://matomo.org/faq/troubleshooting/faq_25610/
   - Userinfo ID: `sub`
   - Client ID + Secret from Authentik Provider
   - OAuth Scopes: `openid email`
-  
+
   In the Authentik Provider:
   - Redirect URIs: `.*` (only that worked for me, don't forget the DOT before!)
   Remaining inputs for provider and application as normal.
-  
-  
+
+

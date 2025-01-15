@@ -1,32 +1,32 @@
 {# This is rendered in the users settings menu as a separate card #}
 
-<div piwik-content-block content-title="{{ 'LoginOIDC_OpenIDConnect'|translate }}">
+<div piwik-content-block content-title="{{ 'RebelOIDC_OpenIDConnect'|translate }}">
 
     <p>
-        {{ 'LoginOIDC_OIDCIntro'|translate }}
+        {{ 'RebelOIDC_OIDCIntro'|translate }}
     </p>
 
     {% if isLinked %}
         <p>
-            <strong>{{ 'LoginOIDC_AccountLinked'|translate(remoteUserId) }}</strong>
+            <strong>{{ 'RebelOIDC_AccountLinked'|translate(remoteUserId) }}</strong>
             <br />
             <br />
-            <form method="post" action="{{ linkTo({'module': 'LoginOIDC', 'action': 'unlink'}) }}">
+            <form method="post" action="{{ linkTo({'module': 'RebelOIDC', 'action': 'unlink'}) }}">
                 <input type="hidden" name="form_nonce" value="{{ nonce }}" />
                 <button class="red lighten-2 btn" type="submit">
-                    {{ 'LoginOIDC_Unlink'|translate }}
+                    {{ 'RebelOIDC_Unlink'|translate }}
                 </button>
             </form>
         </p>
         {% else %}
         <p>
-            <strong>{{ 'LoginOIDC_AccountNotLinked'|translate }}</strong>
+            <strong>{{ 'RebelOIDC_AccountNotLinked'|translate }}</strong>
             <br />
             <br />
-            <form method="post" action="{{ linkTo({'module': 'LoginOIDC', 'action': 'signin'}) }}">
+            <form method="post" action="{{ linkTo({'module': 'RebelOIDC', 'action': 'signin'}) }}">
                 <input type="hidden" name="form_nonce" value="{{ nonce }}" />
                 <button class="btn" type="submit">
-                    {{ 'LoginOIDC_Link'|translate }}
+                    {{ 'RebelOIDC_Link'|translate }}
                 </button>
             </form>
         </p>

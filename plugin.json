@@ -1,10 +1,10 @@
 {
-    "name": "LoginOIDC",
+    "name": "RebelOIDC",
     "version": "5.0.0",
     "description": "Adds support for integrating external authentication services",
     "keywords": ["authentication", "login", "oauth", "openid", "connect", "sso"],
     "license": "GPL v3+",
-    "homepage": "https://github.com/dominik-th/matomo-plugin-LoginOIDC",
+    "homepage": "https://github.com/dominik-th/matomo-plugin-RebelOIDC",
     "authors": [
         {
             "name": "Dominik Thiemermann",
@@ -21,7 +21,7 @@
     },
     "support": {
         "email": "matomo-loginoidc@dthiemermann.org",
-        "issues": "https://github.com/dominik-th/matomo-plugin-LoginOIDC/issues",
-        "source": "https://github.com/dominik-th/matomo-plugin-LoginOIDC"
+        "issues": "https://github.com/Digitalist-Open-Cloud/Matomo-Plugin-RebelOIDC/issues",
+        "source": "https://github.com/Digitalist-Open-Cloud/Matomo-Plugin-RebelOIDC"
     }
 }

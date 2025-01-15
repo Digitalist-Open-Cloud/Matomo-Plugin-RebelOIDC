@@ -7,7 +7,7 @@
 * Hotfix warning about session variable not being set when signing in with username/password.
 
 ### 4.1.0
-* Add option to skip password confirmation requests when user has signed in via LoginOIDC (requires Matomo >4.12.0) (#72).
+* Add option to skip password confirmation requests when user has signed in via RebelOIDC (requires Matomo >4.12.0) (#72).
 * Add option to automatically link existing users when IdP user id matches Matomos user id (#44).
 * Fix logout redirect (#64).
 * Improve db table creation (#31).

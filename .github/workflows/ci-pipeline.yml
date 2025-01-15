@@ -9,8 +9,8 @@ jobs:
   ci:
     strategy:
       matrix:
-        operating-system: [ubuntu-latest]
-        php: ['7.4', '8.1']
+        operating-system: [ubuntu-24.04]
+        php: ['7.4', '8.1', '8.2', '8.3']
         matomo: ['5.x-dev']
     runs-on: ${{ matrix.operating-system }}
     services:
@@ -25,11 +25,11 @@ jobs:
           MARIADB_ROOT_PASSWORD: root
     steps:
       - name: Checkout plugin
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: ${{ github.workspace }}/loginoidc
       - name: Checkout matomo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: 'matomo-org/matomo'
           ref: ${{ matrix.matomo }}
@@ -44,7 +44,7 @@ jobs:
         run: |
           cd ${{ github.workspace }}/matomo
           composer install
-          ln -s ${{ github.workspace }}/loginoidc ./plugins/LoginOIDC
+          ln -s ${{ github.workspace }}/loginoidc ./plugins/RebelOIDC
           php -S localhost:8080 &
       - name: Initialize matomo
         run: |
@@ -66,14 +66,14 @@ jobs:
           ${{ github.workspace }}/matomo/console config:set --section="General" --key="enable_trusted_host_check" --value="0"
           ${{ github.workspace }}/matomo/console config:set --section="tests" --key="request_uri" --value="/"
           ${{ github.workspace }}/matomo/console config:set --section="tests" --key="port" --value="8080"
-          ${{ github.workspace }}/matomo/console plugin:activate LoginOIDC TestRunner
+          ${{ github.workspace }}/matomo/console plugin:activate RebelOIDC TestRunner
           ${{ github.workspace }}/matomo/console development:enable
       - name: Run unit tests
         run: |
-          ${{ github.workspace }}/matomo/console tests:run LoginOIDC unit
+          ${{ github.workspace }}/matomo/console tests:run RebelOIDC unit
       - name: Run system tests
         run: |
-          ${{ github.workspace }}/matomo/console tests:run LoginOIDC system
+          ${{ github.workspace }}/matomo/console tests:run RebelOIDC system
       - name: Run integration tests
         run: |
-          ${{ github.workspace }}/matomo/console tests:run LoginOIDC integration
+          ${{ github.workspace }}/matomo/console tests:run RebelOIDC integration

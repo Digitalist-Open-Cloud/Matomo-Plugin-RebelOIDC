@@ -1,13 +1,14 @@
 <?php
 
 /**
- * Piwik - free/libre analytics platform
+ * Matomo - free/libre analytics platform
  *
- * @link http://piwik.org
+ * @link https://matomo.org
  * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ *
  */
 
-namespace Piwik\Plugins\LoginOIDC;
+namespace Piwik\Plugins\RebelOIDC;
 
 use Exception;
 use Piwik\Access;
@@ -31,7 +32,7 @@ class Controller extends \Piwik\Plugin\Controller
      *
      * @var string
      */
-    public const OIDC_NONCE = "LoginOIDC.nonce";
+    public const OIDC_NONCE = "RebelOIDC.nonce";
 
     /**
      * Auth implementation to login users.
@@ -49,7 +50,7 @@ class Controller extends \Piwik\Plugin\Controller
     protected $sessionInitializer;
 
     /**
-     * Revalidates user authentication.
+     * Revalidate user authentication.
      *
      * @var PasswordVerifier
      */
@@ -66,7 +67,7 @@ class Controller extends \Piwik\Plugin\Controller
         parent::__construct();
 
         if (empty($auth)) {
-            $auth = StaticContainer::get("Piwik\Plugins\LoginOIDC\Auth");
+            $auth = StaticContainer::get("Piwik\Plugins\RebelOIDC\Auth");
         }
         $this->auth = $auth;
 
@@ -103,7 +104,7 @@ class Controller extends \Piwik\Plugin\Controller
      */
     public function loginMod(): string
     {
-        $settings = new \Piwik\Plugins\LoginOIDC\SystemSettings();
+        $settings = new \Piwik\Plugins\RebelOIDC\SystemSettings();
         return $this->renderTemplate("loginMod", array(
             "caption" => $settings->authenticationName->getValue(),
             "nonce" => Nonce::getNonce(self::OIDC_NONCE)
@@ -129,7 +130,7 @@ class Controller extends \Piwik\Plugin\Controller
     public function unlink()
     {
         if ($_SERVER["REQUEST_METHOD"] !== "POST") {
-            throw new Exception(Piwik::translate("LoginOIDC_MethodNotAllowed"));
+            throw new Exception(Piwik::translate("RebelOIDC_MethodNotAllowed"));
         }
         // csrf protection
         Nonce::checkNonce(self::OIDC_NONCE, $_POST["form_nonce"]);
@@ -147,14 +148,14 @@ class Controller extends \Piwik\Plugin\Controller
      */
     public function signin()
     {
-        $settings = new \Piwik\Plugins\LoginOIDC\SystemSettings();
+        $settings = new \Piwik\Plugins\RebelOIDC\SystemSettings();
 
         $allowedMethods = array("POST");
         if (!$settings->disableDirectLoginUrl->getValue()) {
             array_push($allowedMethods, "GET");
         }
         if (!in_array($_SERVER["REQUEST_METHOD"], $allowedMethods)) {
-            throw new Exception(Piwik::translate("LoginOIDC_MethodNotAllowed"));
+            throw new Exception(Piwik::translate("RebelOIDC_MethodNotAllowed"));
         }
 
         if ($_SERVER["REQUEST_METHOD"] === "POST") {
@@ -163,7 +164,7 @@ class Controller extends \Piwik\Plugin\Controller
         }
 
         if (!$this->isPluginSetup($settings)) {
-            throw new Exception(Piwik::translate("LoginOIDC_ExceptionNotConfigured"));
+            throw new Exception(Piwik::translate("RebelOIDC_ExceptionNotConfigured"));
         }
 
         $_SESSION["loginoidc_state"] = $this->generateKey(32);
@@ -187,19 +188,19 @@ class Controller extends \Piwik\Plugin\Controller
      */
     public function callback()
     {
-        $settings = new \Piwik\Plugins\LoginOIDC\SystemSettings();
+        $settings = new \Piwik\Plugins\RebelOIDC\SystemSettings();
         if (!$this->isPluginSetup($settings)) {
-            throw new Exception(Piwik::translate("LoginOIDC_ExceptionNotConfigured"));
+            throw new Exception(Piwik::translate("RebelOIDC_ExceptionNotConfigured"));
         }
 
         if ($_SESSION["loginoidc_state"] !== Request::fromGet()->getStringParameter("state")) {
-            throw new Exception(Piwik::translate("LoginOIDC_ExceptionStateMismatch"));
+            throw new Exception(Piwik::translate("RebelOIDC_ExceptionStateMismatch"));
         } else {
             unset($_SESSION["loginoidc_state"]);
         }
 
         if (Request::fromGet()->getStringParameter("provider") !== "oidc") {
-            throw new Exception(Piwik::translate("LoginOIDC_ExceptionUnknownProvider"));
+            throw new Exception(Piwik::translate("RebelOIDC_ExceptionUnknownProvider"));
         }
 
         // payload for token request
@@ -220,7 +221,7 @@ class Controller extends \Piwik\Plugin\Controller
             "Content-Type: application/x-www-form-urlencoded",
             "Content-Length: " . strlen($dataString),
             "Accept: application/json",
-            "User-Agent: LoginOIDC-Matomo-Plugin"
+            "User-Agent: RebelOIDC-Matomo-Plugin"
         ));
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($curl, CURLOPT_URL, $settings->tokenUrl->getValue());
@@ -230,7 +231,7 @@ class Controller extends \Piwik\Plugin\Controller
         $result = json_decode($response);
 
         if (empty($result) || empty($result->access_token)) {
-            throw new Exception(Piwik::translate("LoginOIDC_ExceptionInvalidResponse"));
+            throw new Exception(Piwik::translate("RebelOIDC_ExceptionInvalidResponse"));
         }
 
         $_SESSION['loginoidc_idtoken'] = empty($result->id_token) ? null : $result->id_token;
@@ -240,7 +241,7 @@ class Controller extends \Piwik\Plugin\Controller
         curl_setopt($curl, CURLOPT_HTTPHEADER, array(
             "Authorization: Bearer " . $result->access_token,
             "Accept: application/json",
-            "User-Agent: LoginOIDC-Matomo-Plugin"
+            "User-Agent: RebelOIDC-Matomo-Plugin"
         ));
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($curl, CURLOPT_URL, $settings->userinfoUrl->getValue());
@@ -253,7 +254,7 @@ class Controller extends \Piwik\Plugin\Controller
         $providerUserId = $result->$userinfoId;
 
         if (empty($providerUserId)) {
-            throw new Exception(Piwik::translate("LoginOIDC_ExceptionInvalidResponse"));
+            throw new Exception(Piwik::translate("RebelOIDC_ExceptionInvalidResponse"));
         }
 
         $user = $this->getUserByRemoteId("oidc", $providerUserId);
@@ -284,7 +285,7 @@ class Controller extends \Piwik\Plugin\Controller
             // users identity has been successfully confirmed by the remote oidc server
             if (Piwik::isUserIsAnonymous()) {
                 if ($settings->disableSuperuser->getValue() && $this->hasTheUserSuperUserAccess($user["login"])) {
-                    throw new Exception(Piwik::translate("LoginOIDC_ExceptionSuperUserOauthDisabled"));
+                    throw new Exception(Piwik::translate("RebelOIDC_ExceptionSuperUserOauthDisabled"));
                 } else {
                     $this->signinAndRedirect($user, $settings);
                 }
@@ -293,7 +294,7 @@ class Controller extends \Piwik\Plugin\Controller
                     $this->passwordVerify->setPasswordVerifiedCorrectly();
                     return;
                 } else {
-                    throw new Exception(Piwik::translate("LoginOIDC_ExceptionAlreadyLinkedToDifferentAccount"));
+                    throw new Exception(Piwik::translate("RebelOIDC_ExceptionAlreadyLinkedToDifferentAccount"));
                 }
             }
         }
@@ -369,7 +370,7 @@ class Controller extends \Piwik\Plugin\Controller
         if ($settings->allowSignup->getValue()) {
             // verify response contains email address
             if (empty($matomoUserLogin)) {
-                throw new Exception(Piwik::translate("LoginOIDC_ExceptionUserNotFoundAndNoEmail"));
+                throw new Exception(Piwik::translate("RebelOIDC_ExceptionUserNotFoundAndNoEmail"));
             }
 
             // verify email address domain is allowed to sign up
@@ -377,7 +378,7 @@ class Controller extends \Piwik\Plugin\Controller
                 $signupDomain = substr($matomoUserLogin, strpos($matomoUserLogin, "@") + 1);
                 $allowedDomains = explode("\n", $settings->allowedSignupDomains->getValue());
                 if (!in_array($signupDomain, $allowedDomains)) {
-                    throw new Exception(Piwik::translate("LoginOIDC_ExceptionAllowedSignupDomainsDenied"));
+                    throw new Exception(Piwik::translate("RebelOIDC_ExceptionAllowedSignupDomainsDenied"));
                 }
             }
 
@@ -396,7 +397,7 @@ class Controller extends \Piwik\Plugin\Controller
             $this->linkAccount($providerUserId, $matomoUserLogin);
             $this->signinAndRedirect($user, $settings);
         } else {
-            throw new Exception(Piwik::translate("LoginOIDC_ExceptionUserNotFoundAndSignupDisabled"));
+            throw new Exception(Piwik::translate("RebelOIDC_ExceptionUserNotFoundAndSignupDisabled"));
         }
     }
 
@@ -439,13 +440,13 @@ class Controller extends \Piwik\Plugin\Controller
      */
     private function getRedirectUri(): string
     {
-        $settings = new \Piwik\Plugins\LoginOIDC\SystemSettings();
+        $settings = new \Piwik\Plugins\RebelOIDC\SystemSettings();
 
         if (!empty($settings->redirectUriOverride->getValue())) {
             return $settings->redirectUriOverride->getValue();
         } else {
             $params = array(
-                "module" => "LoginOIDC",
+                "module" => "RebelOIDC",
                 "action" => "callback",
                 "provider" => "oidc"
             );
