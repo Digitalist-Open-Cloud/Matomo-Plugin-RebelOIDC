@@ -146,6 +146,13 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
     public $allowedSignupDomains;
 
     /**
+     * The domains which are allowed to create accounts.
+     *
+     * @var Setting
+     */
+    public $initialIdSite;
+
+    /**
      * Initialize the plugin settings.
      *
      * @var Setting
@@ -170,6 +177,8 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
         $this->scope = $this->createScopeSetting();
         $this->redirectUriOverride = $this->createRedirectUriOverrideSetting();
         $this->allowedSignupDomains = $this->createAllowedSignupDomainsSetting();
+        $this->initialIdSite = $this->createInitialIdSiteSetting();
+
     }
 
     /**
@@ -399,6 +408,33 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
             $field->uiControl = FieldConfig::UI_CONTROL_TEXT;
         });
     }
+
+    /**
+     * Add initial id site.
+     *
+     * @return SystemSetting
+     */
+    private function createInitialIdSiteSetting(): SystemSetting
+    {
+        // Fetch list of Matomo sites
+        $sites = \Piwik\Plugins\SitesManager\API::getInstance()->getAllSites();
+        $options = [];
+
+        // Create an array of site options for the dropdown
+        foreach ($sites as $site) {
+            $options[$site['idsite']] = $site['name']; // idsite is the value, name is the display name
+        }
+
+        // Create the system setting for the dropdown
+        return $this->makeSetting("initialIdSite", $default = null, FieldConfig::TYPE_STRING, function (FieldConfig $field) use ($options) {
+            $field->title = Piwik::translate("RebelOIDC_InitialIdSite");
+            $field->description = Piwik::translate("RebelOIDC_InitialIdSiteHelp");
+            $field->uiControl = FieldConfig::UI_CONTROL_SINGLE_SELECT;
+            $field->availableValues = $options; // Populate dropdown options
+            //$field->uiControlAttributes['nullable'] = true; // Allow null values for "none selected"
+        });
+    }
+
 
     /**
      * Add redirect uri override setting.
