@@ -178,7 +178,6 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
         $this->redirectUriOverride = $this->createRedirectUriOverrideSetting();
         $this->allowedSignupDomains = $this->createAllowedSignupDomainsSetting();
         $this->initialIdSite = $this->createInitialIdSiteSetting();
-
     }
 
     /**
@@ -358,9 +357,9 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
      *
      * @return SystemSetting
      */
-    private function createUseEmailAsUsernameSetting() : SystemSetting
+    private function createUseEmailAsUsernameSetting(): SystemSetting
     {
-        return $this->makeSetting("useEmailAsUsername", $default = true, FieldConfig::TYPE_BOOL, function(FieldConfig $field) {
+        return $this->makeSetting("useEmailAsUsername", $default = true, FieldConfig::TYPE_BOOL, function (FieldConfig $field) {
             $field->title = Piwik::translate("RebelOIDC_SettingUseEmailAsUsername");
             $field->description = Piwik::translate("RebelOIDC_SettingUseEmailAsUsernameHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_CHECKBOX;
@@ -416,23 +415,28 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
      */
     private function createInitialIdSiteSetting(): SystemSetting
     {
-        // Fetch list of Matomo sites
-        $sites = \Piwik\Plugins\SitesManager\API::getInstance()->getAllSites();
-        $options = [];
-
-        // Create an array of site options for the dropdown
-        foreach ($sites as $site) {
-            $options[$site['idsite']] = $site['name']; // idsite is the value, name is the display name
-        }
-
         // Create the system setting for the dropdown
-        return $this->makeSetting("initialIdSite", $default = null, FieldConfig::TYPE_STRING, function (FieldConfig $field) use ($options) {
+        return $this->makeSetting("initialIdSite", $default = null, FieldConfig::TYPE_STRING, function (FieldConfig $field) {
             $field->title = Piwik::translate("RebelOIDC_InitialIdSite");
             $field->description = Piwik::translate("RebelOIDC_InitialIdSiteHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_SINGLE_SELECT;
-            $field->availableValues = $options; // Populate dropdown options
-            //$field->uiControlAttributes['nullable'] = true; // Allow null values for "none selected"
+            $field->availableValues = $this->getSites();
         });
+    }
+
+    /**
+     *
+     * @return array
+     */
+    private function getSites()
+    {
+        $sites = \Piwik\Plugins\SitesManager\API::getInstance()->getAllSites();
+        $options = [];
+        $options['none'] = Piwik::translate("RebelOIDC_None");
+        foreach ($sites as $site) {
+            $options[$site['idsite']] = $site['name'];
+        }
+        return $options;
     }
 
 

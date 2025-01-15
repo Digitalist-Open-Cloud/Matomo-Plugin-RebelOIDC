@@ -391,6 +391,9 @@ class Controller extends \Piwik\Plugin\Controller
             $initialIdSite = null;
             if (!empty($settings->initialIdSite->getValue())) {
                 $initialIdSite = $settings->initialIdSite->getValue();
+                if ($initialIdSite === 'none') {
+                    $initialIdSite = null;
+                }
             }
 
             // set an invalid pre-hashed password, to block the user from logging in by password
