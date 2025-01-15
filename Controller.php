@@ -13,7 +13,6 @@ use Exception;
 use Piwik\Access;
 use Piwik\Auth;
 use Piwik\Common;
-use Piwik\Config;
 use Piwik\Container\StaticContainer;
 use Piwik\Db;
 use Piwik\Nonce;
@@ -24,16 +23,15 @@ use Piwik\Request;
 use Piwik\Session\SessionFingerprint;
 use Piwik\Session\SessionInitializer;
 use Piwik\Url;
-use Piwik\View;
 
 class Controller extends \Piwik\Plugin\Controller
 {
     /**
-     * Name of the none used in forms by this plugin.
+     * Name of the nonce used in forms by this plugin.
      *
      * @var string
      */
-    const OIDC_NONCE = "LoginOIDC.nonce";
+    public const OIDC_NONCE = "LoginOIDC.nonce";
 
     /**
      * Auth implementation to login users.
@@ -88,7 +86,7 @@ class Controller extends \Piwik\Plugin\Controller
      *
      * @return string
      */
-    public function userSettings() : string
+    public function userSettings(): string
     {
         $providerUser = $this->getProviderUser("oidc");
         return $this->renderTemplate("userSettings", array(
@@ -103,7 +101,7 @@ class Controller extends \Piwik\Plugin\Controller
      *
      * @return string
      */
-    public function loginMod() : string
+    public function loginMod(): string
     {
         $settings = new \Piwik\Plugins\LoginOIDC\SystemSettings();
         return $this->renderTemplate("loginMod", array(
@@ -117,7 +115,7 @@ class Controller extends \Piwik\Plugin\Controller
      *
      * @return string|null
      */
-    public function confirmPasswordMod() : ?string
+    public function confirmPasswordMod(): ?string
     {
         $providerUser = $this->getProviderUser("oidc");
         return empty($providerUser) ? null : $this->loginMod();
@@ -172,7 +170,7 @@ class Controller extends \Piwik\Plugin\Controller
         $params = array(
             "client_id" => $settings->clientId->getValue(),
             "scope" => $settings->scope->getValue(),
-            "redirect_uri"=> $this->getRedirectUri(),
+            "redirect_uri" => $this->getRedirectUri(),
             "state" => $_SESSION["loginoidc_state"],
             "response_type" => "code"
         );
@@ -307,7 +305,7 @@ class Controller extends \Piwik\Plugin\Controller
      * It was used as a template for this function.
      * See: {@link \Piwik\Core::hasTheUserSuperUserAccess($theUser)} method.
      * See: {@link \Piwik\Plugins\UsersManager\Model::getUsersHavingSuperUserAccess()} method.
-     * 
+     *
      * @param  string  $theUser A username to be checked for superuser access
      * @return bool
      */
@@ -348,7 +346,7 @@ class Controller extends \Piwik\Plugin\Controller
      * @param  SystemSettings  $settings
      * @return bool
      */
-    private function isPluginSetup($settings) : bool
+    private function isPluginSetup($settings): bool
     {
         return !empty($settings->authorizeUrl->getValue())
             && !empty($settings->tokenUrl->getValue())
@@ -385,11 +383,13 @@ class Controller extends \Piwik\Plugin\Controller
 
             // set an invalid pre-hashed password, to block the user from logging in by password
             Access::getInstance()->doAsSuperUser(function () use ($matomoUserLogin, $result) {
-                UsersManagerApi::getInstance()->addUser($matomoUserLogin,
-                                                        "(disallow password login)",
-                                                        $matomoUserLogin,
-                                                        /* $_isPasswordHashed = */ true,
-                                                        /* $initialIdSite = */ null);
+                UsersManagerApi::getInstance()->addUser(
+                    $matomoUserLogin,
+                    "(disallow password login)",
+                    $matomoUserLogin,
+                    /* $_isPasswordHashed = */ true,
+                    /* $initialIdSite = */ null
+                );
             });
             $userModel = new Model();
             $user = $userModel->getUser($matomoUserLogin);
@@ -424,7 +424,7 @@ class Controller extends \Piwik\Plugin\Controller
      * @param  int    $length
      * @return string
      */
-    private function generateKey(int $length = 64) : string
+    private function generateKey(int $length = 64): string
     {
         // thanks ccbsschucko at gmail dot com
         // http://docs.php.net/manual/pl/function.random-bytes.php#122766
@@ -437,7 +437,7 @@ class Controller extends \Piwik\Plugin\Controller
      *
      * @return string
      */
-    private function getRedirectUri() : string
+    private function getRedirectUri(): string
     {
         $settings = new \Piwik\Plugins\LoginOIDC\SystemSettings();
 
@@ -483,5 +483,4 @@ class Controller extends \Piwik\Plugin\Controller
         $sql = "SELECT user, provider_user, provider FROM " . Common::prefixTable("loginoidc_provider") . " WHERE provider=? AND user=?";
         return Db::fetchRow($sql, array($provider, Piwik::getCurrentUserLogin()));
     }
-
 }

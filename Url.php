@@ -81,7 +81,7 @@ class Url
         $this->port = $urlParts["port"] ?? null;
         $this->path = $urlParts["path"] ?? null;
 
-        if (isset($urlParts["query"])) { 
+        if (isset($urlParts["query"])) {
             parse_str($urlParts["query"], $this->query);
         }
     }
@@ -91,7 +91,7 @@ class Url
      *
      * @return string
      */
-    public function buildString() : string
+    public function buildString(): string
     {
         $url = $this->scheme . "://";
         if (!empty($this->username) || !empty($this->password)) {
@@ -116,7 +116,7 @@ class Url
      *
      * @return string
      */
-    public function getQueryParameter(string $parameter) : string
+    public function getQueryParameter(string $parameter): string
     {
         return $this->query[$parameter];
     }
@@ -126,7 +126,7 @@ class Url
      *
      * @return void
      */
-    public function setQueryParameter(string $parameter, string $value) : void
+    public function setQueryParameter(string $parameter, string $value): void
     {
         $this->query[$parameter] = $value;
     }

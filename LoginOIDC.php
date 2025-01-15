@@ -28,7 +28,7 @@ class LoginOIDC extends \Piwik\Plugin
      *
      * @return array
      */
-    public function registerEvents() : array
+    public function registerEvents(): array
     {
         return array(
             "Session.beforeSessionStart" => "beforeSessionStart",
@@ -47,7 +47,7 @@ class LoginOIDC extends \Piwik\Plugin
      *
      * @return void
      */
-    public function beforeSessionStart() : void
+    public function beforeSessionStart(): void
     {
         if (!$this->shouldHandleRememberMe()) {
             return;
@@ -61,7 +61,7 @@ class LoginOIDC extends \Piwik\Plugin
      *
      * @return bool
      */
-    private function shouldHandleRememberMe() : bool
+    private function shouldHandleRememberMe(): bool
     {
         $module = Request::fromGet()->getStringParameter("module", "");
         $action = Request::fromGet()->getStringParameter("action", "");
@@ -169,7 +169,7 @@ class LoginOIDC extends \Piwik\Plugin
      *
      * @return void
      */
-    public function userRequiresPasswordConfirmation(&$requiresPasswordConfirmation, $login) : void
+    public function userRequiresPasswordConfirmation(&$requiresPasswordConfirmation, $login): void
     {
         $settings = new SystemSettings();
         $disablePasswordConfirmation = $settings->disablePasswordConfirmation->getValue();

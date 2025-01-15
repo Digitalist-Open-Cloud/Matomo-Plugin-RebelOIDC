@@ -19,7 +19,6 @@ use Piwik\Validators\UrlLike;
 
 class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
 {
-
     /**
      * The disable superuser setting.
      *
@@ -170,9 +169,9 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
      *
      * @return SystemSetting
      */
-    private function createDisableSuperuserSetting() : SystemSetting
+    private function createDisableSuperuserSetting(): SystemSetting
     {
-        return $this->makeSetting("disableSuperuser", $default = false, FieldConfig::TYPE_BOOL, function(FieldConfig $field) {
+        return $this->makeSetting("disableSuperuser", $default = false, FieldConfig::TYPE_BOOL, function (FieldConfig $field) {
             $field->title = Piwik::translate("LoginOIDC_SettingDisableSuperuser");
             $field->description = Piwik::translate("LoginOIDC_SettingDisableSuperuserHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_CHECKBOX;
@@ -184,9 +183,9 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
      *
      * @return SystemSetting
      */
-    private function createDisablePasswordConfirmationSetting() : SystemSetting
+    private function createDisablePasswordConfirmationSetting(): SystemSetting
     {
-        return $this->makeSetting("disablePasswordConfirmation", $default = false, FieldConfig::TYPE_BOOL, function(FieldConfig $field) {
+        return $this->makeSetting("disablePasswordConfirmation", $default = false, FieldConfig::TYPE_BOOL, function (FieldConfig $field) {
             $field->title = Piwik::translate("LoginOIDC_SettingDisablePasswordConfirmation");
             $field->description = Piwik::translate("LoginOIDC_SettingDisablePasswordConfirmationHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_CHECKBOX;
@@ -198,9 +197,9 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
      *
      * @return SystemSetting
      */
-    private function createDisableDirectLoginUrlSetting() : SystemSetting
+    private function createDisableDirectLoginUrlSetting(): SystemSetting
     {
-        return $this->makeSetting("disableDirectLoginUrl", $default = true, FieldConfig::TYPE_BOOL, function(FieldConfig $field) {
+        return $this->makeSetting("disableDirectLoginUrl", $default = true, FieldConfig::TYPE_BOOL, function (FieldConfig $field) {
             $field->title = Piwik::translate("LoginOIDC_SettingDisableDirectLoginUrl");
             $field->description = Piwik::translate("LoginOIDC_SettingDisableDirectLoginUrlHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_CHECKBOX;
@@ -212,9 +211,9 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
      *
      * @return SystemSetting
      */
-    private function createAllowSignupSetting() : SystemSetting
+    private function createAllowSignupSetting(): SystemSetting
     {
-        return $this->makeSetting("allowSignup", $default = false, FieldConfig::TYPE_BOOL, function(FieldConfig $field) {
+        return $this->makeSetting("allowSignup", $default = false, FieldConfig::TYPE_BOOL, function (FieldConfig $field) {
             $field->title = Piwik::translate("LoginOIDC_SettingAllowSignup");
             $field->description = Piwik::translate("LoginOIDC_SettingAllowSignupHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_CHECKBOX;
@@ -226,9 +225,9 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
      *
      * @return SystemSetting
      */
-    private function createBypassTwoFaSetting() : SystemSetting
+    private function createBypassTwoFaSetting(): SystemSetting
     {
-        return $this->makeSetting("bypassTwoFa", $default = false, FieldConfig::TYPE_BOOL, function(FieldConfig $field) {
+        return $this->makeSetting("bypassTwoFa", $default = false, FieldConfig::TYPE_BOOL, function (FieldConfig $field) {
             $field->title = Piwik::translate("LoginOIDC_SettingBypassTwoFa");
             $field->description = Piwik::translate("LoginOIDC_SettingBypassTwoFaHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_CHECKBOX;
@@ -240,9 +239,9 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
      *
      * @return SystemSetting
      */
-    private function createAutoLinkingSetting() : SystemSetting
+    private function createAutoLinkingSetting(): SystemSetting
     {
-        return $this->makeSetting("autoLinking", $default = false, FieldConfig::TYPE_BOOL, function(FieldConfig $field) {
+        return $this->makeSetting("autoLinking", $default = false, FieldConfig::TYPE_BOOL, function (FieldConfig $field) {
             $field->title = Piwik::translate("LoginOIDC_SettingAutoLinking");
             $field->description = Piwik::translate("LoginOIDC_SettingAutoLinkingHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_CHECKBOX;
@@ -254,9 +253,9 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
      *
      * @return SystemSetting
      */
-    private function createAuthenticationNameSetting() : SystemSetting
+    private function createAuthenticationNameSetting(): SystemSetting
     {
-        return $this->makeSetting("authenticationName", $default = "OAuth login", FieldConfig::TYPE_STRING, function(FieldConfig $field) {
+        return $this->makeSetting("authenticationName", $default = "OAuth login", FieldConfig::TYPE_STRING, function (FieldConfig $field) {
             $field->title = Piwik::translate("LoginOIDC_SettingAuthenticationName");
             $field->description = Piwik::translate("LoginOIDC_SettingAuthenticationNameHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_TEXT;
@@ -268,9 +267,9 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
      *
      * @return SystemSetting
      */
-    private function createAuthorizeUrlSetting() : SystemSetting
+    private function createAuthorizeUrlSetting(): SystemSetting
     {
-        return $this->makeSetting("authorizeUrl", $default = "https://github.com/login/oauth/authorize", FieldConfig::TYPE_STRING, function(FieldConfig $field) {
+        return $this->makeSetting("authorizeUrl", $default = "https://github.com/login/oauth/authorize", FieldConfig::TYPE_STRING, function (FieldConfig $field) {
             $field->title = Piwik::translate("LoginOIDC_SettingAuthorizeUrl");
             $field->description = Piwik::translate("LoginOIDC_SettingAuthorizeUrlHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_URL;
@@ -283,9 +282,9 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
      *
      * @return SystemSetting
      */
-    private function createTokenUrlSetting() : SystemSetting
+    private function createTokenUrlSetting(): SystemSetting
     {
-        return $this->makeSetting("tokenUrl", $default = "https://github.com/login/oauth/access_token", FieldConfig::TYPE_STRING, function(FieldConfig $field) {
+        return $this->makeSetting("tokenUrl", $default = "https://github.com/login/oauth/access_token", FieldConfig::TYPE_STRING, function (FieldConfig $field) {
             $field->title = Piwik::translate("LoginOIDC_SettingTokenUrl");
             $field->description = Piwik::translate("LoginOIDC_SettingTokenUrlHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_URL;
@@ -298,9 +297,9 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
      *
      * @return SystemSetting
      */
-    private function createUserinfoUrlSetting() : SystemSetting
+    private function createUserinfoUrlSetting(): SystemSetting
     {
-        return $this->makeSetting("userinfoUrl", $default = "https://api.github.com/user", FieldConfig::TYPE_STRING, function(FieldConfig $field) {
+        return $this->makeSetting("userinfoUrl", $default = "https://api.github.com/user", FieldConfig::TYPE_STRING, function (FieldConfig $field) {
             $field->title = Piwik::translate("LoginOIDC_SettingUserinfoUrl");
             $field->description = Piwik::translate("LoginOIDC_SettingUserinfoUrlHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_URL;
@@ -313,9 +312,9 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
      *
      * @return SystemSetting
      */
-    private function createEndSessionUrlSetting() : SystemSetting
+    private function createEndSessionUrlSetting(): SystemSetting
     {
-        return $this->makeSetting("endSessionUrl", $default = "", FieldConfig::TYPE_STRING, function(FieldConfig $field) {
+        return $this->makeSetting("endSessionUrl", $default = "", FieldConfig::TYPE_STRING, function (FieldConfig $field) {
             $field->title = Piwik::translate("LoginOIDC_SettingEndSessionUrl");
             $field->description = Piwik::translate("LoginOIDC_SettingEndSessionUrlHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_URL;
@@ -327,9 +326,9 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
      *
      * @return SystemSetting
      */
-    private function createUserinfoIdSetting() : SystemSetting
+    private function createUserinfoIdSetting(): SystemSetting
     {
-        return $this->makeSetting("userinfoId", $default = "id", FieldConfig::TYPE_STRING, function(FieldConfig $field) {
+        return $this->makeSetting("userinfoId", $default = "id", FieldConfig::TYPE_STRING, function (FieldConfig $field) {
             $field->title = Piwik::translate("LoginOIDC_SettingUserinfoId");
             $field->description = Piwik::translate("LoginOIDC_SettingUserinfoIdHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_TEXT;
@@ -342,9 +341,9 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
      *
      * @return SystemSetting
      */
-    private function createClientIdSetting() : SystemSetting
+    private function createClientIdSetting(): SystemSetting
     {
-        return $this->makeSetting("clientId", $default = "", FieldConfig::TYPE_STRING, function(FieldConfig $field) {
+        return $this->makeSetting("clientId", $default = "", FieldConfig::TYPE_STRING, function (FieldConfig $field) {
             $field->title = Piwik::translate("LoginOIDC_SettingClientId");
             $field->description = Piwik::translate("LoginOIDC_SettingClientIdHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_TEXT;
@@ -356,9 +355,9 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
      *
      * @return SystemSetting
      */
-    private function createClientSecretSetting() : SystemSetting
+    private function createClientSecretSetting(): SystemSetting
     {
-        return $this->makeSetting("clientSecret", $default = "", FieldConfig::TYPE_STRING, function(FieldConfig $field) {
+        return $this->makeSetting("clientSecret", $default = "", FieldConfig::TYPE_STRING, function (FieldConfig $field) {
             $field->title = Piwik::translate("LoginOIDC_SettingClientSecret");
             $field->description = Piwik::translate("LoginOIDC_SettingClientSecretHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_PASSWORD;
@@ -370,9 +369,9 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
      *
      * @return SystemSetting
      */
-    private function createScopeSetting() : SystemSetting
+    private function createScopeSetting(): SystemSetting
     {
-        return $this->makeSetting("scope", $default = "", FieldConfig::TYPE_STRING, function(FieldConfig $field) {
+        return $this->makeSetting("scope", $default = "", FieldConfig::TYPE_STRING, function (FieldConfig $field) {
             $field->title = Piwik::translate("LoginOIDC_SettingScope");
             $field->description = Piwik::translate("LoginOIDC_SettingScopeHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_TEXT;
@@ -384,9 +383,9 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
      *
      * @return SystemSetting
      */
-    private function createRedirectUriOverrideSetting() : SystemSetting
+    private function createRedirectUriOverrideSetting(): SystemSetting
     {
-        return $this->makeSetting("redirectUriOverride", $default = "", FieldConfig::TYPE_STRING, function(FieldConfig $field) {
+        return $this->makeSetting("redirectUriOverride", $default = "", FieldConfig::TYPE_STRING, function (FieldConfig $field) {
             $field->title = Piwik::translate("LoginOIDC_SettingRedirectUriOverride");
             $field->description = Piwik::translate("LoginOIDC_SettingRedirectUriOverrideHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_URL;
@@ -398,9 +397,9 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
      *
      * @return SystemSetting
      */
-    private function createAllowedSignupDomainsSetting() : SystemSetting
+    private function createAllowedSignupDomainsSetting(): SystemSetting
     {
-        return $this->makeSetting("allowedSignupDomains", $default = "", FieldConfig::TYPE_STRING, function(FieldConfig $field) {
+        return $this->makeSetting("allowedSignupDomains", $default = "", FieldConfig::TYPE_STRING, function (FieldConfig $field) {
             $field->title = Piwik::translate("LoginOIDC_SettingAllowedSignupDomains");
             $field->description = Piwik::translate("LoginOIDC_SettingAllowedSignupDomainsHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_TEXTAREA;
@@ -410,7 +409,7 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
                 }
                 $domainPattern = "/^(((?!-))(xn--|_{1,1})?[a-z0-9-]{0,61}[a-z0-9]{1,1}\.)*(xn--)?([a-z0-9][a-z0-9\-]{0,60}|[a-z0-9-]{1,30}\.[a-z]{2,})$/";
                 $domains = explode("\n", $value);
-                foreach($domains as $domain) {
+                foreach ($domains as $domain) {
                     $isValidDomain = preg_match($domainPattern, $domain);
                     if (!$isValidDomain) {
                         throw new Exception(Piwik::translate("LoginOIDC_ExceptionAllowedSignupDomainsValidationFailed"));

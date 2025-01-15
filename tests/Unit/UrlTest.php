@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Matomo - free/libre analytics platform
  *
@@ -31,26 +32,26 @@ class UrlTest extends \PHPUnit\Framework\TestCase
      */
     private Url $url;
 
-    public function setUp() : void
+    public function setUp(): void
     {
         parent::setUp();
         $this->urlString = "https://example.com/test?key=val&second=2&third=three";
         $this->url = new Url($this->urlString);
     }
 
-    public function testRebuildingUrl() : void
+    public function testRebuildingUrl(): void
     {
         $this->assertEquals($this->url->buildString(), $this->urlString);
     }
 
-    public function testReadingQueryParameters() : void
+    public function testReadingQueryParameters(): void
     {
         $this->assertEquals($this->url->getQueryParameter("key"), "val");
         $this->assertEquals($this->url->getQueryParameter("second"), "2");
         $this->assertEquals($this->url->getQueryParameter("third"), "three");
     }
 
-    public function testUpdatingQueryParameters() : void
+    public function testUpdatingQueryParameters(): void
     {
         $this->url->setQueryParameter("key", "one");
         $this->url->setQueryParameter("second", "two");
@@ -63,7 +64,7 @@ class UrlTest extends \PHPUnit\Framework\TestCase
         $this->assertEquals($this->url->getQueryParameter("fourth"), "4");
     }
 
-    public function testRebuilingModifiedUrl() : void
+    public function testRebuilingModifiedUrl(): void
     {
         $targetUrlString = "https://example.com/test?key=one&second=two&third=3&fourth=4";
         $this->url->setQueryParameter("key", "one");
