@@ -1,27 +1,27 @@
 {
-    "name": "RebelOIDC",
-    "version": "5.0.0",
-    "description": "Adds support for integrating external authentication services",
-    "keywords": ["authentication", "login", "oauth", "openid", "connect", "sso"],
-    "license": "GPL v3+",
-    "homepage": "https://github.com/dominik-th/matomo-plugin-RebelOIDC",
-    "authors": [
-        {
-            "name": "Dominik Thiemermann",
-            "email": "hello@dthiemermann.org",
-            "homepage": "https://www.dthiemermann.org"
-        }
-    ],
-    "require": {
-        "piwik": ">=5.0.0-b1,<6.0.0-b1",
-        "php": ">=7.0.0"
-    },
-    "donate": {
-        "paypal": "matomo-loginoidc@dthiemermann.org"
-    },
-    "support": {
-        "email": "matomo-loginoidc@dthiemermann.org",
-        "issues": "https://github.com/Digitalist-Open-Cloud/Matomo-Plugin-RebelOIDC/issues",
-        "source": "https://github.com/Digitalist-Open-Cloud/Matomo-Plugin-RebelOIDC"
+  "name": "RebelOIDC",
+  "version": "5.0.0",
+  "description": "Adds support for integrating external authentication services",
+  "keywords": ["authentication", "login", "oauth", "openid", "connect", "sso"],
+  "license": "GPL v3+",
+  "homepage": "https://github.com/dominik-th/matomo-plugin-RebelOIDC",
+  "authors": [
+    {
+      "name": "Dominik Thiemermann",
+      "email": "hello@dthiemermann.org",
+      "homepage": "https://www.dthiemermann.org"
     }
+  ],
+  "require": {
+    "piwik": ">=5.0.0-b1,<6.0.0-b1",
+    "php": ">=7.0.0"
+  },
+  "donate": {
+    "paypal": "matomo-loginoidc@dthiemermann.org"
+  },
+  "support": {
+    "email": "matomo-loginoidc@dthiemermann.org",
+    "issues": "https://github.com/Digitalist-Open-Cloud/Matomo-Plugin-RebelOIDC/issues",
+    "source": "https://github.com/Digitalist-Open-Cloud/Matomo-Plugin-RebelOIDC"
+  }
 }
