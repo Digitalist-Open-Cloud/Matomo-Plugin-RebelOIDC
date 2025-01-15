@@ -157,8 +157,6 @@ class RebelOIDC extends Plugin
             }
             if (isset(Config::getInstance()->General['login_logout_url'])) {
                 $originalLogoutUrl = Config::getInstance()->General['login_logout_url'];
-            }
-            if ($originalLogoutUrl) {
                 $endSessionUrl->setQueryParameter("post_logout_redirect_uri", $originalLogoutUrl);
             }
             Config::getInstance()->General['login_logout_url'] = $endSessionUrl->buildString();

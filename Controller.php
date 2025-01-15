@@ -382,7 +382,7 @@ class Controller extends \Piwik\Plugin\Controller
             }
             // verify email address domain is allowed to sign up
             if (!empty($settings->allowedSignupDomains->getValue())) {
-                $signupDomain = substr($providerEmail, strpos($matomoUserLogin, "@") + 1);
+                $signupDomain = substr($providerEmail, strpos($providerEmail, "@") + 1);
                 $allowedDomains = explode("\n", $settings->allowedSignupDomains->getValue());
                 if (!in_array($signupDomain, $allowedDomains)) {
                     throw new Exception(Piwik::translate("RebelOIDC_ExceptionAllowedSignupDomainsDenied"));
@@ -394,7 +394,7 @@ class Controller extends \Piwik\Plugin\Controller
                 UsersManagerApi::getInstance()->addUser(
                     $userId,
                     "(disallow password login)",
-                    $matomoUserLogin,
+                    $providerEmail,
                     /* $_isPasswordHashed = */ true,
                     /* $initialIdSite = */ null
                 );
