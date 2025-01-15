@@ -388,14 +388,22 @@ class Controller extends \Piwik\Plugin\Controller
                 }
             }
 
+            $initialIdSite = null;
+            if (!empty($settings->initialIdSite->getValue())) {
+                $initialIdSite = $settings->initialIdSite->getValue();
+                if ($initialIdSite === 'none') {
+                    $initialIdSite = null;
+                }
+            }
+
             // set an invalid pre-hashed password, to block the user from logging in by password
-            Access::getInstance()->doAsSuperUser(function () use ($userId, $providerEmail) {
+            Access::getInstance()->doAsSuperUser(function () use ($userId, $providerEmail, $initialIdSite) {
                 UsersManagerApi::getInstance()->addUser(
                     $userId,
                     "(disallow password login)",
                     $providerEmail,
                     /* $_isPasswordHashed = */ true,
-                    /* $initialIdSite = */ null
+                    $initialIdSite
                 );
             });
             $userModel = new Model();
