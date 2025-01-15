@@ -50,7 +50,17 @@ https://matomo.org/faq/troubleshooting/faq_25610/
   - Userinfo ID: `sub`
   - OAuth Scopes: `openid email`
 
-- Keycloak:
+
+- Keycloak (after 17.x):
+
+  - Authorize URL: `http(s)://<YOUR_KEYCLOAK_URL>/realms/<REALM>/protocol/openid-connect/auth`
+  - Token URL: `http(s)://<YOUR_KEYCLOAK_URL>/realms/<REALM>/protocol/openid-connect/token`
+  - Userinfo URL: `http(s)://<YOUR_KEYCLOAK_URL>/realms/<REALM>/protocol/openid-connect/userinfo`
+  - Logout URL: `http(s)://<YOUR_KEYCLOAK_URL>/realms/<REALM>/protocol/openid-connect/logout?redirect_uri=<MATOMO_URL>`
+  - Userinfo ID: `sub`
+  - OAuth Scopes: `openid email`
+
+- Keycloak (before 17.x):
 
   - Authorize URL: `http(s)://<YOUR_KEYCLOAK_URL>/auth/realms/<REALM>/protocol/openid-connect/auth`
   - Token URL: `http(s)://<YOUR_KEYCLOAK_URL>/auth/realms/<REALM>/protocol/openid-connect/token`
@@ -96,7 +106,7 @@ https://matomo.org/faq/troubleshooting/faq_25610/
   - Redirect URIs: `.*` (only that worked for me, don't forget the DOT before!)
   Remaining inputs for provider and application as normal.
 
-  - Okta:
+- Okta:
 
   - Authorize URL: `https://${yourOktaDomain}/oauth2/v1/authorize`
   - Token URL: `https://${yourOktaDomain}/oauth2/v1/token`
@@ -104,3 +114,9 @@ https://matomo.org/faq/troubleshooting/faq_25610/
   - Userinfo ID: `email`
   - OAuth Scopes: `openid email`
 
+- Authelia
+  - Authorize URL: `https://<YOUR_AUTHENTIK_URL>/api/oidc/authorization`
+  - Token URL: `https://<YOUR_AUTHENTIK_URL>/api/oidc/token`
+  - Userinfo URL: `https://<YOUR_AUTHENTIK_URL>/api/oidc/userinfo`
+  - Userinfo ID: `sub`
+  - OAuth Scopes: `openid profile email groups`
