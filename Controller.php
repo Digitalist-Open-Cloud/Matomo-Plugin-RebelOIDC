@@ -145,7 +145,7 @@ class Controller extends \Piwik\Plugin\Controller
      *
      * @return void
      */
-    public function signin()
+    public function signIn()
     {
         $settings = new \Piwik\Plugins\RebelOIDC\SystemSettings();
 
@@ -243,14 +243,14 @@ class Controller extends \Piwik\Plugin\Controller
             "User-Agent: RebelOIDC-Matomo-Plugin"
         ));
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($curl, CURLOPT_URL, $settings->userinfoUrl->getValue());
+        curl_setopt($curl, CURLOPT_URL, $settings->userInfoUrl->getValue());
         // request remote userinfo and remote user id
         $response = curl_exec($curl);
         curl_close($curl);
         $result = json_decode($response);
 
-        $userinfoId = $settings->userinfoId->getValue();
-        $providerUserId = $result->$userinfoId;
+        $userInfoId = $settings->userInfoId->getValue();
+        $providerUserId = $result->$userInfoId;
 
         if (empty($providerUserId)) {
             throw new Exception(Piwik::translate("RebelOIDC_ExceptionInvalidResponse"));
@@ -286,7 +286,7 @@ class Controller extends \Piwik\Plugin\Controller
                 if ($settings->disableSuperuser->getValue() && $this->hasTheUserSuperUserAccess($user["login"])) {
                     throw new Exception(Piwik::translate("RebelOIDC_ExceptionSuperUserOauthDisabled"));
                 } else {
-                    $this->signinAndRedirect($user, $settings);
+                    $this->signInAndRedirect($user, $settings);
                 }
             } else {
                 if (Piwik::getCurrentUserLogin() === $user["login"]) {
@@ -350,7 +350,7 @@ class Controller extends \Piwik\Plugin\Controller
     {
         return !empty($settings->authorizeUrl->getValue())
             && !empty($settings->tokenUrl->getValue())
-            && !empty($settings->userinfoUrl->getValue())
+            && !empty($settings->userInfoUrl->getValue())
             && !empty($settings->clientId->getValue())
             && !empty($settings->clientSecret->getValue());
     }
@@ -372,7 +372,7 @@ class Controller extends \Piwik\Plugin\Controller
                 throw new Exception(Piwik::translate("RebelOIDC_ExceptionUserNotFoundAndNoEmail"));
             }
             if (empty($providerUserId)) {
-                throw new Exception(Piwik::translate("LoginOIDC_ExceptionUserNotFoundAndNoUserId"));
+                throw new Exception(Piwik::translate("RebelOIDC_ExceptionUserNotFoundAndNoUserId"));
             }
             if ($settings->useEmailAsUsername->getValue()) {
                 $userId = $providerEmail;
@@ -401,7 +401,7 @@ class Controller extends \Piwik\Plugin\Controller
             $userModel = new Model();
             $user = $userModel->getUser($userId);
             $this->linkAccount($providerUserId, $userId);
-            $this->signinAndRedirect($user, $settings);
+            $this->signInAndRedirect($user, $settings);
         } else {
             throw new Exception(Piwik::translate("RebelOIDC_ExceptionUserNotFoundAndSignupDisabled"));
         }
@@ -413,7 +413,7 @@ class Controller extends \Piwik\Plugin\Controller
      * @param  array  $user
      * @return void
      */
-    private function signinAndRedirect(array $user, SystemSettings $settings)
+    private function signInAndRedirect(array $user, SystemSettings $settings)
     {
         $this->auth->setLogin($user["login"]);
         $this->auth->setForceLogin(true);

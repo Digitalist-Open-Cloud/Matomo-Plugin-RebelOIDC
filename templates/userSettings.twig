@@ -23,7 +23,7 @@
             <strong>{{ 'RebelOIDC_AccountNotLinked'|translate }}</strong>
             <br />
             <br />
-            <form method="post" action="{{ linkTo({'module': 'RebelOIDC', 'action': 'signin'}) }}">
+            <form method="post" action="{{ linkTo({'module': 'RebelOIDC', 'action': 'signIn'}) }}">
                 <input type="hidden" name="form_nonce" value="{{ nonce }}" />
                 <button class="btn" type="submit">
                     {{ 'RebelOIDC_Link'|translate }}

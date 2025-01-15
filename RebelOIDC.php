@@ -23,9 +23,6 @@ use Piwik\Plugin;
 class RebelOIDC extends Plugin
 {
     /**
-     * Subscribe to Matomo events and assign handlers.
-     * https://developer.matomo.org/api-reference/Piwik/Plugin#registerevents
-     *
      * @return array
      */
     public function registerEvents(): array

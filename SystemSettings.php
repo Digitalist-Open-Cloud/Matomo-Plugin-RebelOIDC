@@ -87,7 +87,7 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
      *
      * @var Setting
      */
-    public $userinfoUrl;
+    public $userInfoUrl;
 
     /**
      * The url where the OIDC provider will invalidate the users session.
@@ -97,16 +97,16 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
     public $endSessionUrl;
 
     /**
-     * The name of the unique user id field in $userinfoUrl response.
+     * The name of the unique user id field in $userInfoUrl response.
      *
      * @var Setting
      */
-    public $userinfoId;
+    public $userInfoId;
 
      /**
      * Use the e-mail address as username.
      *
-     * @var bool
+     * @var Setting
      */
     public $useEmailAsUsername;
 
@@ -161,9 +161,9 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
         $this->authenticationName = $this->createAuthenticationNameSetting();
         $this->authorizeUrl = $this->createAuthorizeUrlSetting();
         $this->tokenUrl = $this->createTokenUrlSetting();
-        $this->userinfoUrl = $this->createUserinfoUrlSetting();
+        $this->userInfoUrl = $this->createUserInfoUrlSetting();
         $this->endSessionUrl = $this->createEndSessionUrlSetting();
-        $this->userinfoId = $this->createUserinfoIdSetting();
+        $this->userInfoId = $this->createUserInfoIdSetting();
         $this->useEmailAsUsername = $this->createUseEmailAsUsernameSetting();
         $this->clientId = $this->createClientIdSetting();
         $this->clientSecret = $this->createClientSecretSetting();
@@ -263,7 +263,7 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
      */
     private function createAuthenticationNameSetting(): SystemSetting
     {
-        return $this->makeSetting("authenticationName", $default = "OAuth login", FieldConfig::TYPE_STRING, function (FieldConfig $field) {
+        return $this->makeSetting("authenticationName", $default = "OIDC login", FieldConfig::TYPE_STRING, function (FieldConfig $field) {
             $field->title = Piwik::translate("RebelOIDC_SettingAuthenticationName");
             $field->description = Piwik::translate("RebelOIDC_SettingAuthenticationNameHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_TEXT;
@@ -277,7 +277,7 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
      */
     private function createAuthorizeUrlSetting(): SystemSetting
     {
-        return $this->makeSetting("authorizeUrl", $default = "https://github.com/login/oauth/authorize", FieldConfig::TYPE_STRING, function (FieldConfig $field) {
+        return $this->makeSetting("authorizeUrl", $default = "", FieldConfig::TYPE_STRING, function (FieldConfig $field) {
             $field->title = Piwik::translate("RebelOIDC_SettingAuthorizeUrl");
             $field->description = Piwik::translate("RebelOIDC_SettingAuthorizeUrlHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_URL;
@@ -292,7 +292,7 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
      */
     private function createTokenUrlSetting(): SystemSetting
     {
-        return $this->makeSetting("tokenUrl", $default = "https://github.com/login/oauth/access_token", FieldConfig::TYPE_STRING, function (FieldConfig $field) {
+        return $this->makeSetting("tokenUrl", $default = "", FieldConfig::TYPE_STRING, function (FieldConfig $field) {
             $field->title = Piwik::translate("RebelOIDC_SettingTokenUrl");
             $field->description = Piwik::translate("RebelOIDC_SettingTokenUrlHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_URL;
@@ -301,15 +301,15 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
     }
 
     /**
-     * Add userinfo url setting.
+     * Add userInfo url setting.
      *
      * @return SystemSetting
      */
-    private function createUserinfoUrlSetting(): SystemSetting
+    private function createUserInfoUrlSetting(): SystemSetting
     {
-        return $this->makeSetting("userinfoUrl", $default = "https://api.github.com/user", FieldConfig::TYPE_STRING, function (FieldConfig $field) {
-            $field->title = Piwik::translate("RebelOIDC_SettingUserinfoUrl");
-            $field->description = Piwik::translate("RebelOIDC_SettingUserinfoUrlHelp");
+        return $this->makeSetting("userInfoUrl", $default = "", FieldConfig::TYPE_STRING, function (FieldConfig $field) {
+            $field->title = Piwik::translate("RebelOIDC_SettingUserInfoUrl");
+            $field->description = Piwik::translate("RebelOIDC_SettingUserInfoUrlHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_URL;
             $field->validators[] = new UrlLike();
         });
@@ -330,15 +330,15 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
     }
 
     /**
-     * Add userinfo id setting.
+     * Add userInfo id setting.
      *
      * @return SystemSetting
      */
-    private function createUserinfoIdSetting(): SystemSetting
+    private function createUserInfoIdSetting(): SystemSetting
     {
-        return $this->makeSetting("userinfoId", $default = "id", FieldConfig::TYPE_STRING, function (FieldConfig $field) {
-            $field->title = Piwik::translate("RebelOIDC_SettingUserinfoId");
-            $field->description = Piwik::translate("RebelOIDC_SettingUserinfoIdHelp");
+        return $this->makeSetting("userInfoId", $default = "sub", FieldConfig::TYPE_STRING, function (FieldConfig $field) {
+            $field->title = Piwik::translate("RebelOIDC_SettingUserInfoId");
+            $field->description = Piwik::translate("RebelOIDC_SettingUserInfoIdHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_TEXT;
             $field->validators[] = new NotEmpty();
         });

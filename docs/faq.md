@@ -19,7 +19,7 @@ If you change the OAuth provider and there could be user id collisions, you shou
 **Can I embed the Login button on another website?**
 
 You have to uncheck the `Disable direct login url` option in the settings.
-Afterwards you can link to `http(s)://<YOUR_MATOMO_URL>/index.php?module=RebelOIDC&action=signin&provider=oidc` and Matomo will redirect the client accordingly.
+Afterwards you can link to `http(s)://<YOUR_MATOMO_URL>/index.php?module=RebelOIDC&action=signIn&provider=oidc` and Matomo will redirect the client accordingly.
 
 **Can I setup more than one provider?**
 
