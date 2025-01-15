@@ -12,7 +12,7 @@ namespace Piwik\Plugins\RebelOIDC;
 
 use Exception;
 use Piwik\Access;
-use Piwik\Auth;
+use Piwik\Plugins\RebelOIDC\Auth;
 use Piwik\Common;
 use Piwik\Container\StaticContainer;
 use Piwik\Db;
@@ -36,7 +36,6 @@ class Controller extends \Piwik\Plugin\Controller
 
     /**
      * Auth implementation to login users.
-     * https://developer.matomo.org/api-reference/Piwik/Auth
      *
      * @var Auth
      */
@@ -67,7 +66,7 @@ class Controller extends \Piwik\Plugin\Controller
         parent::__construct();
 
         if (empty($auth)) {
-            $auth = StaticContainer::get("Piwik\Plugins\RebelOIDC\Auth");
+            $auth = new Auth();
         }
         $this->auth = $auth;
 
