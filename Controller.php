@@ -24,19 +24,22 @@ use Piwik\Request;
 use Piwik\Session\SessionFingerprint;
 use Piwik\Session\SessionInitializer;
 use Piwik\Url;
+use Piwik\Plugins\RebelOIDC\SystemSettings;
 
 class Controller extends \Piwik\Plugin\Controller
 {
     /**
-     * Name of the nonce used in forms by this plugin.
-     *
      * @var string
      */
     public const OIDC_NONCE = "RebelOIDC.nonce";
 
     /**
+     * @var string
+     */
+    public const OIDC_PROVIDER = 'oidc';
+
+    /**
      * Auth implementation to login users.
-     *
      * @var Auth
      */
     protected $auth;
@@ -88,7 +91,7 @@ class Controller extends \Piwik\Plugin\Controller
      */
     public function userSettings(): string
     {
-        $providerUser = $this->getProviderUser("oidc");
+        $providerUser = $this->getProviderUser(self::OIDC_PROVIDER);
         return $this->renderTemplate("userSettings", array(
             "isLinked" => !empty($providerUser),
             "remoteUserId" => $providerUser["provider_user"],
@@ -103,11 +106,13 @@ class Controller extends \Piwik\Plugin\Controller
      */
     public function loginMod(): string
     {
-        $settings = new \Piwik\Plugins\RebelOIDC\SystemSettings();
-        return $this->renderTemplate("loginMod", array(
-            "caption" => $settings->authenticationName->getValue(),
-            "nonce" => Nonce::getNonce(self::OIDC_NONCE)
-        ));
+        $settings = new SystemSettings();
+        if ($this->isPluginSetup($settings)) {
+            return $this->renderTemplate("loginMod", array(
+                "caption" => $settings->authenticationName->getValue(),
+                "nonce" => Nonce::getNonce(self::OIDC_NONCE)
+            ));
+        }
     }
 
     /**
@@ -117,7 +122,7 @@ class Controller extends \Piwik\Plugin\Controller
      */
     public function confirmPasswordMod(): ?string
     {
-        $providerUser = $this->getProviderUser("oidc");
+        $providerUser = $this->getProviderUser(self::OIDC_PROVIDER);
         return empty($providerUser) ? null : $this->loginMod();
     }
 
@@ -135,7 +140,7 @@ class Controller extends \Piwik\Plugin\Controller
         Nonce::checkNonce(self::OIDC_NONCE, $_POST["form_nonce"]);
 
         $sql = "DELETE FROM " . Common::prefixTable("loginoidc_provider") . " WHERE user=? AND provider=?";
-        $bind = array(Piwik::getCurrentUserLogin(), "oidc");
+        $bind = array(Piwik::getCurrentUserLogin(), self::OIDC_PROVIDER);
         Db::query($sql, $bind);
         $this->redirectToIndex("UsersManager", "userSecurity");
     }
@@ -147,7 +152,7 @@ class Controller extends \Piwik\Plugin\Controller
      */
     public function signIn()
     {
-        $settings = new \Piwik\Plugins\RebelOIDC\SystemSettings();
+        $settings = new SystemSettings();
 
         $allowedMethods = array("POST");
         if (!$settings->disableDirectLoginUrl->getValue()) {
@@ -187,7 +192,7 @@ class Controller extends \Piwik\Plugin\Controller
      */
     public function callback()
     {
-        $settings = new \Piwik\Plugins\RebelOIDC\SystemSettings();
+        $settings = new SystemSettings();
         if (!$this->isPluginSetup($settings)) {
             throw new Exception(Piwik::translate("RebelOIDC_ExceptionNotConfigured"));
         }
@@ -198,7 +203,7 @@ class Controller extends \Piwik\Plugin\Controller
             unset($_SESSION["loginoidc_state"]);
         }
 
-        if (Request::fromGet()->getStringParameter("provider") !== "oidc") {
+        if (Request::fromGet()->getStringParameter("provider") !== self::OIDC_PROVIDER) {
             throw new Exception(Piwik::translate("RebelOIDC_ExceptionUnknownProvider"));
         }
 
@@ -256,7 +261,7 @@ class Controller extends \Piwik\Plugin\Controller
             throw new Exception(Piwik::translate("RebelOIDC_ExceptionInvalidResponse"));
         }
 
-        $user = $this->getUserByRemoteId("oidc", $providerUserId);
+        $user = $this->getUserByRemoteId(self::OIDC_PROVIDER, $providerUserId);
 
         // auto linking
         // if setting is activated, the oidc account is automatically linked, if the user ID of the OpenID Connect Provider is equal to the internal matomo user ID
@@ -267,7 +272,7 @@ class Controller extends \Piwik\Plugin\Controller
                 if (empty($user)) {
                     $this->linkAccount($providerUserId, $providerUserId);
                 }
-                $user = $this->getUserByRemoteId("oidc", $providerUserId);
+                $user = $this->getUserByRemoteId(self::OIDC_PROVIDER, $providerUserId);
             }
         }
 
@@ -336,7 +341,7 @@ class Controller extends \Piwik\Plugin\Controller
             $matomoUserLogin = Piwik::getCurrentUserLogin();
         }
         $sql = "INSERT INTO " . Common::prefixTable("loginoidc_provider") . " (user, provider_user, provider, date_connected) VALUES (?, ?, ?, ?)";
-        $bind = array($matomoUserLogin, $providerUserId, "oidc", date("Y-m-d H:i:s"));
+        $bind = array($matomoUserLogin, $providerUserId, self::OIDC_PROVIDER, date("Y-m-d H:i:s"));
         Db::query($sql, $bind);
     }
 
@@ -446,7 +451,7 @@ class Controller extends \Piwik\Plugin\Controller
      */
     private function getRedirectUri(): string
     {
-        $settings = new \Piwik\Plugins\RebelOIDC\SystemSettings();
+        $settings = new SystemSettings();
 
         if (!empty($settings->redirectUriOverride->getValue())) {
             return $settings->redirectUriOverride->getValue();
@@ -454,7 +459,7 @@ class Controller extends \Piwik\Plugin\Controller
             $params = array(
                 "module" => "RebelOIDC",
                 "action" => "callback",
-                "provider" => "oidc"
+                "provider" => self::OIDC_PROVIDER
             );
             return Url::getCurrentUrlWithoutQueryString() . "?" . http_build_query($params);
         }
