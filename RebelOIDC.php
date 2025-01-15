@@ -148,15 +148,15 @@ class RebelOIDC extends Plugin
     {
         $settings = new SystemSettings();
         $endSessionUrl = $settings->endSessionUrl->getValue();
-        if (!empty($endSessionUrl) && $_SESSION["loginoidc_auth"]) {
+        if (!empty($endSessionUrl) && !empty($_SESSION["loginoidc_auth"])) {
             // make sure we properly unset the plugins session variable
             unset($_SESSION['loginoidc_auth']);
             $endSessionUrl = new Url($endSessionUrl);
             if (isset($_SESSION["loginoidc_idtoken"])) {
                 $endSessionUrl->setQueryParameter("id_token_hint", $_SESSION["loginoidc_idtoken"]);
             }
-            $originalLogoutUrl = Config::getInstance()->General['login_logout_url'];
-            if ($originalLogoutUrl) {
+            if (isset(Config::getInstance()->General['login_logout_url'])) {
+                $originalLogoutUrl = Config::getInstance()->General['login_logout_url'];
                 $endSessionUrl->setQueryParameter("post_logout_redirect_uri", $originalLogoutUrl);
             }
             Config::getInstance()->General['login_logout_url'] = $endSessionUrl->buildString();
