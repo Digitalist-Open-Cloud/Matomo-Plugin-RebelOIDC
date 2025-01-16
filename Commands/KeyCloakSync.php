@@ -1,116 +1,138 @@
 <?php
 
-/**
- * Matomo - free/libre analytics platform
- *
- * @link    https://matomo.org
- * @license https://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- */
-
 namespace Piwik\Plugins\RebelOIDC\Commands;
 
-use Piwik\Plugin\ConsoleCommand;
 use Exception;
+use Piwik\Plugin\ConsoleCommand;
+use Piwik\Plugins\RebelOIDC\Helper;
+use Piwik\Plugins\UsersManager\API as UsersManagerApi;
+use Piwik\Common;
+use Piwik\Db;
 
-/**
- */
 class KeyCloakSync extends ConsoleCommand
 {
+    use Helper;
+
+    public const SUCCESS = 0;
+    private const PROVIDER_NAME = 'oidc';
+
     /**
-     * @inheritDoc
+     * Configures the command.
      */
-    protected function configure()
+    protected function configure(): void
     {
-        $this->setName('rebeloidc:keycloak-sync');
-        $this->setDescription('KeyCloakSync');
-        $this->addRequiredValueOption('url', null, 'Base url');
-        $this->addRequiredValueOption('realm', null, 'Realm');
-        $this->addRequiredValueOption('client', null, 'Client ID');
-        $this->addRequiredValueOption('secret', null, 'Secret');
+        $this->setName('rebeloidc:keycloak-sync')
+            ->setDescription('Sync users from Keycloak with Matomo.')
+            ->addRequiredValueOption('url', null, 'Base URL of Keycloak')
+            ->addRequiredValueOption('realm', null, 'Keycloak Realm')
+            ->addRequiredValueOption('client', null, 'Client ID for Keycloak API')
+            ->addRequiredValueOption('secret', null, 'Client Secret for Keycloak API')
+            ->addOptionalValueOption('user-field', null, 'Field to use for username (default: "username")', 'username')
+            ->addOptionalValueOption('id-site', null, 'Initial site ID to assign view permission', null);
     }
 
     /**
-     * @inheritDoc
+     * Executes the command.
      */
     protected function doExecute(): int
     {
         $input = $this->getInput();
         $output = $this->getOutput();
 
-        $baseUrl = $input->getOption('url');
-        $realm = $input->getOption('realm');
-        $client = $input->getOption('client');
-        $secret = $input->getOption('secret');
+        // Validate required options
+        try {
+            $baseUrl = $this->validateOption($input->getOption('url'), '--url');
+            $realm = $this->validateOption($input->getOption('realm'), '--realm');
+            $client = $this->validateOption($input->getOption('client'), '--client');
+            $secret = $this->validateOption($input->getOption('secret'), '--secret');
+        } catch (Exception $e) {
+            $output->writeln('<error>' . $e->getMessage() . '</error>');
+            return self::SUCCESS; // Exit gracefully
+        }
+
+        // Optional options with default values
+        $userField = $input->getOption('user-field') ?? 'username';
+        $initialIdSite = $input->getOption('id-site');
 
         try {
             $users = $this->getUsers($baseUrl, $realm, $client, $secret);
-            var_dump($users);
+            $output->writeln(sprintf('<info>Fetched %d users from Keycloak.</info>', count($users)));
         } catch (Exception $e) {
-            echo 'Error: ' . $e->getMessage();
+            $output->writeln('<error>Failed to fetch users from Keycloak: ' . $e->getMessage() . '</error>');
+            return self::SUCCESS;
         }
-        //$message = sprintf('<info>KeyCloakSync: %s</info>', $name);
-        //$output->writeln($message);
 
+        foreach ($users as $user) {
+            try {
+                $this->processUser($user, $userField, $initialIdSite, $output);
+            } catch (Exception $e) {
+                $output->writeln('<error>Error processing user: ' . $e->getMessage() . '</error>');
+            }
+        }
+
+        $output->writeln('<info>User synchronization completed successfully.</info>');
         return self::SUCCESS;
     }
 
     /**
-     * @return array
+     * Processes and synchronizes user.
      */
-    private function getUsers($baseUrl, $realm, $clientId, $clientSecret)
+    private function processUser(array $user, string $userField, ?int $initialIdSite, $output): void
     {
-        // Get an access token
-        $tokenUrl = $baseUrl . "/realms/" . $realm . "/protocol/openid-connect/token";
-        $ch = curl_init($tokenUrl);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true); // POST request
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
-            'grant_type' => 'client_credentials',
-            'client_id' => $clientId,
-            'client_secret' => $clientSecret,
-        ]));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/x-www-form-urlencoded',
-        ]);
-        $response = curl_exec($ch);
+        $userId = $user[$userField] ?? null;
+        $providerEmail = $user['email'] ?? null;
+        $providerUserId = $user['id'] ?? null;
 
-        if (curl_errno($ch)) {
-            throw new Exception('Error getting access token: ' . curl_error($ch));
+        if (empty($userId) || empty($providerEmail) || empty($providerUserId)) {
+            throw new Exception('User missing required fields (id, email, or userField).');
         }
 
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        if ($httpCode >= 400) {
-            throw new Exception("Failed to retrieve token. HTTP Code: $httpCode. Response: $response");
+        if ($this->addUser($userId, $providerUserId, $providerEmail, $initialIdSite)) {
+            $output->writeln(sprintf('<info>Successfully added user: %s</info>', $userId));
+        } else {
+            $output->writeln(sprintf('<error>Failed to add user: %s</error>', $userId));
         }
-        $tokenData = json_decode($response, true);
-        curl_close($ch);
-        if (!isset($tokenData['access_token'])) {
-            throw new Exception('Access token not found in Keycloak response');
+    }
+
+    /**
+     * Adds a user to Matomo and links it to a remote user ID from Keycloak.
+     */
+    private function addUser(string $userId, string $providerUserId, string $providerEmail, ?int $initialIdSite): bool
+    {
+        $api = UsersManagerApi::getInstance();
+
+        // Check if user already exists in Matomo
+        if (!$api->userExists($userId) && !$api->userEmailExists($providerEmail)) {
+            $api->addUser(
+                $userId,
+                "(disallow password login)", // Prevent password login
+                $providerEmail,
+                true, // $_isPasswordHashed = true
+                $initialIdSite
+            );
         }
 
-        $token = $tokenData['access_token'];
+        // Link the user in the custom OIDC table
+        $sql = "INSERT INTO " . Common::prefixTable("loginoidc_provider") . " (user, provider_user, provider, date_connected)
+                VALUES (?, ?, ?, ?)";
+        $bind = [$userId, $providerUserId, self::PROVIDER_NAME, date("Y-m-d H:i:s")];
 
-        // Fetch users
-        $usersUrl = $baseUrl . "/admin/realms/" . $realm . "/users";
-        $ch = curl_init($usersUrl);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Authorization: Bearer ' . $token,
-            'Content-Type: application/json',
-        ]);
-        $response = curl_exec($ch);
-
-        if (curl_errno($ch)) {
-            throw new Exception('Error retrieving users: ' . curl_error($ch));
+        try {
+            Db::query($sql, $bind); // Insert into database
+            return true;
+        } catch (Exception $e) {
+            return false; // Return failure if any DB error occurs
         }
+    }
 
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        if ($httpCode >= 400) {
-            throw new Exception("Failed to fetch users. HTTP Code: $httpCode. Response: $response");
+    /**
+     * Helper to validate required options.
+     */
+    private function validateOption(?string $value, string $optionName): string
+    {
+        if (empty($value)) {
+            throw new Exception(sprintf('Missing required option: %s', $optionName));
         }
-        $users = json_decode($response, true);
-        curl_close($ch);
-
-        return $users;
+        return $value;
     }
 }
