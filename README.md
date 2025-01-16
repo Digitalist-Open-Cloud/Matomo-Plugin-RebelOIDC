@@ -40,7 +40,7 @@ Hopefully. more integrations to other supported OIDC authenticators will be adde
 
 ## Fork
 
-This plugin is a fork of the [LoginOIDC](https://github.com/dominik-th/matomo-plugin-LoginOIDC) plugin.
+This plugin started as a fork of the [LoginOIDC](https://github.com/dominik-th/matomo-plugin-LoginOIDC) plugin. We are happy to continue the work that [dominik-th](https://github.com/dominik-th/) started. We also hope to get contributions in.
 
 ## License
 

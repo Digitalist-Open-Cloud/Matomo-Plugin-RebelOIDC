@@ -79,7 +79,7 @@ trait Helper
         if ($matomoUserLogin === null) {
             $matomoUserLogin = Piwik::getCurrentUserLogin();
         }
-        $sql = "INSERT INTO " . Common::prefixTable("loginoidc_provider") . " (user, provider_user, provider, date_connected) VALUES (?, ?, ?, ?)";
+        $sql = "INSERT INTO " . Common::prefixTable("rebeloidc_provider") . " (user, provider_user, provider, date_connected) VALUES (?, ?, ?, ?)";
         $bind = array($matomoUserLogin, $providerUserId, self::OIDC_PROVIDER, date("Y-m-d H:i:s"));
         Db::query($sql, $bind);
     }
@@ -97,7 +97,7 @@ trait Helper
         // csrf protection
         Nonce::checkNonce(self::OIDC_NONCE, $_POST["form_nonce"]);
 
-        $sql = "DELETE FROM " . Common::prefixTable("loginoidc_provider") . " WHERE user=? AND provider=?";
+        $sql = "DELETE FROM " . Common::prefixTable("rebeloidc_provider") . " WHERE user=? AND provider=?";
         $bind = array(Piwik::getCurrentUserLogin(), self::OIDC_PROVIDER);
         Db::query($sql, $bind);
         $this->redirectToIndex("UsersManager", "userSecurity");
@@ -112,7 +112,7 @@ trait Helper
      */
     private function getUserByRemoteId($provider, $remoteId)
     {
-        $sql = "SELECT user FROM " . Common::prefixTable("loginoidc_provider") . " WHERE provider=? AND provider_user=?";
+        $sql = "SELECT user FROM " . Common::prefixTable("rebeloidc_provider") . " WHERE provider=? AND provider_user=?";
         $result = Db::fetchRow($sql, array($provider, $remoteId));
         if (empty($result)) {
             return $result;
@@ -145,7 +145,7 @@ trait Helper
      */
     private function getProviderUser($provider)
     {
-        $sql = "SELECT user, provider_user, provider FROM " . Common::prefixTable("loginoidc_provider") . " WHERE provider=? AND user=?";
+        $sql = "SELECT user, provider_user, provider FROM " . Common::prefixTable("rebeloidc_provider") . " WHERE provider=? AND user=?";
         return Db::fetchRow($sql, array($provider, Piwik::getCurrentUserLogin()));
     }
 

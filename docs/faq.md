@@ -12,7 +12,7 @@ If your provider does not seem to work, leave an issue on GitHub.
 **How can I unlink all users?**
 
 The easiest way is to fully uninstall the plugin and reinstall afterwards.
-Otherwise you can delete data from `matomo_loginoidc_provider` in your sql database.
+Otherwise you can delete data from `matomo_rebeloidc_provider` in your sql database.
 
 If you change the OAuth provider and there could be user id collisions, you should make sure to unlink all users beforehand.
 

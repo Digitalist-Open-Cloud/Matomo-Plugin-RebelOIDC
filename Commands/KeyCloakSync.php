@@ -113,7 +113,7 @@ class KeyCloakSync extends ConsoleCommand
         }
 
         // Link the user in the custom OIDC table
-        $sql = "INSERT INTO " . Common::prefixTable("loginoidc_provider") . " (user, provider_user, provider, date_connected)
+        $sql = "INSERT INTO " . Common::prefixTable("rebeloidc_provider") . " (user, provider_user, provider, date_connected)
                 VALUES (?, ?, ?, ?)";
         $bind = [$userId, $providerUserId, self::PROVIDER_NAME, date("Y-m-d H:i:s")];
 
