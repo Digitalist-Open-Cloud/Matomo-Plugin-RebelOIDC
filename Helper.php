@@ -20,16 +20,6 @@ use Exception;
 trait Helper
 {
     /**
-     * @var string
-     */
-    public const OIDC_NONCE = "RebelOIDC.nonce";
-
-    /**
-     * @var string
-     */
-    public const OIDC_PROVIDER = 'oidc';
-
-    /**
      * Generate cryptographically secure random string.
      *
      * @param  int    $length
@@ -80,7 +70,7 @@ trait Helper
             $matomoUserLogin = Piwik::getCurrentUserLogin();
         }
         $sql = "INSERT INTO " . Common::prefixTable("rebeloidc_provider") . " (user, provider_user, provider, date_connected) VALUES (?, ?, ?, ?)";
-        $bind = array($matomoUserLogin, $providerUserId, self::OIDC_PROVIDER, date("Y-m-d H:i:s"));
+        $bind = [$matomoUserLogin, $providerUserId, "oidc", date("Y-m-d H:i:s")];
         Db::query($sql, $bind);
     }
 
@@ -95,10 +85,10 @@ trait Helper
             throw new Exception(Piwik::translate("RebelOIDC_MethodNotAllowed"));
         }
         // csrf protection
-        Nonce::checkNonce(self::OIDC_NONCE, $_POST["form_nonce"]);
+        Nonce::checkNonce("RebelOIDC.nonce", $_POST["form_nonce"]);
 
         $sql = "DELETE FROM " . Common::prefixTable("rebeloidc_provider") . " WHERE user=? AND provider=?";
-        $bind = array(Piwik::getCurrentUserLogin(), self::OIDC_PROVIDER);
+        $bind = array(Piwik::getCurrentUserLogin(), "oidc");
         Db::query($sql, $bind);
         $this->redirectToIndex("UsersManager", "userSecurity");
     }
