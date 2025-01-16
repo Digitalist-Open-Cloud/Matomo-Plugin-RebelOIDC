@@ -13,9 +13,7 @@ namespace Piwik\Plugins\RebelOIDC;
 use Exception;
 use Piwik\Access;
 use Piwik\Plugins\RebelOIDC\Auth;
-use Piwik\Common;
 use Piwik\Container\StaticContainer;
-use Piwik\Db;
 use Piwik\Nonce;
 use Piwik\Piwik;
 use Piwik\Plugins\UsersManager\API as UsersManagerAPI;
@@ -357,7 +355,6 @@ class Controller extends \Piwik\Plugin\Controller
         Url::redirectToUrl("index.php");
     }
 
-
     /**
      * Generate the redirect url on which the oauth service has to redirect.
      *
@@ -377,19 +374,6 @@ class Controller extends \Piwik\Plugin\Controller
             );
             return Url::getCurrentUrlWithoutQueryString() . "?" . http_build_query($params);
         }
-    }
-
-
-    /**
-     * Fetch provider information for the currently signed in user.
-     *
-     * @param  string  $provider
-     * @return array
-     */
-    private function getProviderUser($provider)
-    {
-        $sql = "SELECT user, provider_user, provider FROM " . Common::prefixTable("loginoidc_provider") . " WHERE provider=? AND user=?";
-        return Db::fetchRow($sql, array($provider, Piwik::getCurrentUserLogin()));
     }
 
     /**

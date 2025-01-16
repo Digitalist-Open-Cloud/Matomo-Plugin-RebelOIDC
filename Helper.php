@@ -1,5 +1,13 @@
 <?php
 
+/**
+ * Matomo - free/libre analytics platform
+ *
+ * @link https://matomo.org
+ * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
+ *
+ */
+
 namespace Piwik\Plugins\RebelOIDC;
 
 use Piwik\Plugins\UsersManager\Model;
@@ -127,5 +135,17 @@ trait Helper
             && !empty($settings->userInfoUrl->getValue())
             && !empty($settings->clientId->getValue())
             && !empty($settings->clientSecret->getValue());
+    }
+
+    /**
+     * Fetch provider information for the currently signed in user.
+     *
+     * @param  string  $provider
+     * @return array
+     */
+    private function getProviderUser($provider)
+    {
+        $sql = "SELECT user, provider_user, provider FROM " . Common::prefixTable("loginoidc_provider") . " WHERE provider=? AND user=?";
+        return Db::fetchRow($sql, array($provider, Piwik::getCurrentUserLogin()));
     }
 }
