@@ -1,32 +1,39 @@
 {
-  "name": "RebelOIDC",
-  "version": "5.0.0",
-  "description": "Adds support for integrating external authentication services",
-  "keywords": ["authentication", "login", "oauth", "openid", "connect", "sso"],
-  "license": "GPL v3+",
-  "homepage": "https://github.com/Digitalist-Open-Cloud/Matomo-Plugin-RebelOIDC",
-  "authors": [
-    {
-      "name": "Dominik Thiemermann",
-      "email": "hello@dthiemermann.org",
-      "homepage": "https://www.dthiemermann.org"
+    "name": "RebelOIDC",
+    "version": "5.1.0",
+    "description": "Adds support for integrating external authentication services",
+    "keywords": [
+        "authentication",
+        "login",
+        "oauth",
+        "openid",
+        "connect",
+        "sso"
+    ],
+    "license": "GPL v3+",
+    "homepage": "https:\/\/github.com\/Digitalist-Open-Cloud\/Matomo-Plugin-RebelOIDC",
+    "authors": [
+        {
+            "name": "Dominik Thiemermann",
+            "email": "hello@dthiemermann.org",
+            "homepage": "https:\/\/www.dthiemermann.org"
+        },
+        {
+            "name": "Digitalist Open Cloud",
+            "email": "cloud@digitalist.com",
+            "homepage": "https:\/\/digitalist.cloud"
+        }
+    ],
+    "require": {
+        "php": ">=8.0.0",
+        "matomo": ">=5.0.0-stable,<6.0.0-b1"
     },
-    {
-      "name": "Digitalist Open Cloud",
-      "email": "cloud@digitalist.com",
-      "homepage": "https://digitalist.cloud"
+    "donate": {
+        "paypal": "matomo-loginoidc@dthiemermann.org"
+    },
+    "support": {
+        "email": "cloud@digitalist.com",
+        "issues": "https:\/\/github.com\/Digitalist-Open-Cloud\/Matomo-Plugin-RebelOIDC\/issues",
+        "source": "https:\/\/github.com\/Digitalist-Open-Cloud\/Matomo-Plugin-RebelOIDC"
     }
-  ],
-  "require": {
-    "piwik": ">=5.0.0-b1,<6.0.0-b1",
-    "php": ">=7.0.0"
-  },
-  "donate": {
-    "paypal": "matomo-loginoidc@dthiemermann.org"
-  },
-  "support": {
-    "email": "cloud@digitalist.com",
-    "issues": "https://github.com/Digitalist-Open-Cloud/Matomo-Plugin-RebelOIDC/issues",
-    "source": "https://github.com/Digitalist-Open-Cloud/Matomo-Plugin-RebelOIDC"
-  }
 }

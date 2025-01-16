@@ -84,7 +84,7 @@ class RebelOIDC extends Plugin
      */
     public function getTablesInstalled(&$allTablesInstalled)
     {
-        $allTablesInstalled[] = Common::prefixTable('loginoidc_provider');
+        $allTablesInstalled[] = Common::prefixTable('rebeloidc_provider');
     }
 
     /**
@@ -185,7 +185,7 @@ class RebelOIDC extends Plugin
     public function install()
     {
         // right now there is just one provider but we already add a column to support multiple providers later on
-        DbHelper::createTable("loginoidc_provider", "
+        DbHelper::createTable("rebeloidc_provider", "
             `user` VARCHAR( 100 ) NOT NULL,
             `provider_user` VARCHAR( 255 ) NOT NULL,
             `provider` VARCHAR( 255 ) NOT NULL,
@@ -202,6 +202,6 @@ class RebelOIDC extends Plugin
      */
     public function uninstall()
     {
-        Db::dropTables(Common::prefixTable("loginoidc_provider"));
+        Db::dropTables(Common::prefixTable("rebeloidc_provider"));
     }
 }
