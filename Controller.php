@@ -25,9 +25,12 @@ use Piwik\Session\SessionFingerprint;
 use Piwik\Session\SessionInitializer;
 use Piwik\Url;
 use Piwik\Plugins\RebelOIDC\SystemSettings;
+use Piwik\Plugins\RebelOIDC\Helper;
 
 class Controller extends \Piwik\Plugin\Controller
 {
+    use Helper;
+
     /**
      * @var string
      */
@@ -68,20 +71,9 @@ class Controller extends \Piwik\Plugin\Controller
     {
         parent::__construct();
 
-        if (empty($auth)) {
-            $auth = new Auth();
-        }
-        $this->auth = $auth;
-
-        if (empty($sessionInitializer)) {
-            $sessionInitializer = new SessionInitializer();
-        }
-        $this->sessionInitializer = $sessionInitializer;
-
-        if (empty($passwordVerify)) {
-            $passwordVerify = StaticContainer::get("Piwik\Plugins\Login\PasswordVerifier");
-        }
-        $this->passwordVerify = $passwordVerify;
+        $this->auth = $auth ?: new Auth();
+        $this->sessionInitializer = $sessionInitializer ?: new SessionInitializer();
+        $this->passwordVerify = StaticContainer::get("Piwik\Plugins\Login\PasswordVerifier");
     }
 
     /**
@@ -92,11 +84,11 @@ class Controller extends \Piwik\Plugin\Controller
     public function userSettings(): string
     {
         $providerUser = $this->getProviderUser(self::OIDC_PROVIDER);
-        return $this->renderTemplate("userSettings", array(
-            "isLinked" => !empty($providerUser),
-            "remoteUserId" => $providerUser["provider_user"],
-            "nonce" => Nonce::getNonce(self::OIDC_NONCE)
-        ));
+        return $this->renderTemplate('userSettings', [
+            'isLinked' => !empty($providerUser),
+            'remoteUserId' => $providerUser['provider_user'] ?? '',
+            'nonce' => Nonce::getNonce(self::OIDC_NONCE),
+        ]);
     }
 
     /**
@@ -108,11 +100,12 @@ class Controller extends \Piwik\Plugin\Controller
     {
         $settings = new SystemSettings();
         if ($this->isPluginSetup($settings)) {
-            return $this->renderTemplate("loginMod", array(
-                "caption" => $settings->authenticationName->getValue(),
-                "nonce" => Nonce::getNonce(self::OIDC_NONCE)
-            ));
+            return $this->renderTemplate('loginMod', [
+                'caption' => $settings->authenticationName->getValue(),
+                'nonce' => Nonce::getNonce(self::OIDC_NONCE),
+            ]);
         }
+        return '';
     }
 
     /**
@@ -124,25 +117,6 @@ class Controller extends \Piwik\Plugin\Controller
     {
         $providerUser = $this->getProviderUser(self::OIDC_PROVIDER);
         return empty($providerUser) ? null : $this->loginMod();
-    }
-
-    /**
-     * Remove link between the currently signed user and the remote user.
-     *
-     * @return void
-     */
-    public function unlink()
-    {
-        if ($_SERVER["REQUEST_METHOD"] !== "POST") {
-            throw new Exception(Piwik::translate("RebelOIDC_MethodNotAllowed"));
-        }
-        // csrf protection
-        Nonce::checkNonce(self::OIDC_NONCE, $_POST["form_nonce"]);
-
-        $sql = "DELETE FROM " . Common::prefixTable("loginoidc_provider") . " WHERE user=? AND provider=?";
-        $bind = array(Piwik::getCurrentUserLogin(), self::OIDC_PROVIDER);
-        Db::query($sql, $bind);
-        $this->redirectToIndex("UsersManager", "userSecurity");
     }
 
     /**
@@ -172,6 +146,7 @@ class Controller extends \Piwik\Plugin\Controller
         }
 
         $_SESSION["loginoidc_state"] = $this->generateKey(32);
+
         $params = array(
             "client_id" => $settings->clientId->getValue(),
             "scope" => $settings->scope->getValue(),
@@ -190,7 +165,7 @@ class Controller extends \Piwik\Plugin\Controller
      *
      * @return void
      */
-    public function callback()
+    public function callback(): void
     {
         $settings = new SystemSettings();
         if (!$this->isPluginSetup($settings)) {
@@ -305,62 +280,6 @@ class Controller extends \Piwik\Plugin\Controller
     }
 
     /**
-     * Check whether the given user has superuser access.
-     * The function in Piwik\Core cannot be used because it requires an admin user being signed in.
-     * It was used as a template for this function.
-     * See: {@link \Piwik\Core::hasTheUserSuperUserAccess($theUser)} method.
-     * See: {@link \Piwik\Plugins\UsersManager\Model::getUsersHavingSuperUserAccess()} method.
-     *
-     * @param  string  $theUser A username to be checked for superuser access
-     * @return bool
-     */
-    private function hasTheUserSuperUserAccess(string $theUser)
-    {
-        $userModel = new Model();
-        $superUsers = $userModel->getUsersHavingSuperUserAccess();
-
-        foreach ($superUsers as $superUser) {
-            if ($theUser === $superUser['login']) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Create a link between the remote user and the currently signed in user.
-     *
-     * @param  string  $providerUserId
-     * @param  string  $matomoUserLogin Override the local user if non-null
-     * @return void
-     */
-    private function linkAccount(string $providerUserId, string $matomoUserLogin = null)
-    {
-        if ($matomoUserLogin === null) {
-            $matomoUserLogin = Piwik::getCurrentUserLogin();
-        }
-        $sql = "INSERT INTO " . Common::prefixTable("loginoidc_provider") . " (user, provider_user, provider, date_connected) VALUES (?, ?, ?, ?)";
-        $bind = array($matomoUserLogin, $providerUserId, self::OIDC_PROVIDER, date("Y-m-d H:i:s"));
-        Db::query($sql, $bind);
-    }
-
-    /**
-     * Determine if all the required settings have been setup.
-     *
-     * @param  SystemSettings  $settings
-     * @return bool
-     */
-    private function isPluginSetup($settings): bool
-    {
-        return !empty($settings->authorizeUrl->getValue())
-            && !empty($settings->tokenUrl->getValue())
-            && !empty($settings->userInfoUrl->getValue())
-            && !empty($settings->clientId->getValue())
-            && !empty($settings->clientSecret->getValue());
-    }
-
-    /**
      * Sign up a new user and link him with a given remote user id.
      *
      * @param  SystemSettings  $settings
@@ -368,7 +287,7 @@ class Controller extends \Piwik\Plugin\Controller
      * @param  string          $providerEmail    Users email address
      * @return void
      */
-    private function signupUser($settings, string $providerUserId, string $providerEmail = null)
+    private function signupUser($settings, string $providerUserId, string $providerEmail = null): void
     {
         // only sign up user if setting is enabled
         if ($settings->allowSignup->getValue()) {
@@ -438,19 +357,6 @@ class Controller extends \Piwik\Plugin\Controller
         Url::redirectToUrl("index.php");
     }
 
-    /**
-     * Generate cryptographically secure random string.
-     *
-     * @param  int    $length
-     * @return string
-     */
-    private function generateKey(int $length = 64): string
-    {
-        // thanks ccbsschucko at gmail dot com
-        // http://docs.php.net/manual/pl/function.random-bytes.php#122766
-        $length = ($length < 4) ? 4 : $length;
-        return bin2hex(random_bytes(($length - ($length % 2)) / 2));
-    }
 
     /**
      * Generate the redirect url on which the oauth service has to redirect.
@@ -473,24 +379,6 @@ class Controller extends \Piwik\Plugin\Controller
         }
     }
 
-    /**
-     * Fetch user from database given the provider and remote user id.
-     *
-     * @param  string  $provider
-     * @param  string  $remoteId
-     * @return array
-     */
-    private function getUserByRemoteId($provider, $remoteId)
-    {
-        $sql = "SELECT user FROM " . Common::prefixTable("loginoidc_provider") . " WHERE provider=? AND provider_user=?";
-        $result = Db::fetchRow($sql, array($provider, $remoteId));
-        if (empty($result)) {
-            return $result;
-        } else {
-            $userModel = new Model();
-            return $userModel->getUser($result["user"]);
-        }
-    }
 
     /**
      * Fetch provider information for the currently signed in user.
@@ -502,5 +390,19 @@ class Controller extends \Piwik\Plugin\Controller
     {
         $sql = "SELECT user, provider_user, provider FROM " . Common::prefixTable("loginoidc_provider") . " WHERE provider=? AND user=?";
         return Db::fetchRow($sql, array($provider, Piwik::getCurrentUserLogin()));
+    }
+
+    /**
+     * Validate OAuth state to mitigate CSRF attacks.
+     *
+     * @param string $state
+     * @throws Exception
+     */
+    private function validateState(string $state): void
+    {
+        if ($_SESSION['loginoidc_state'] !== $state) {
+            throw new Exception(Piwik::translate("RebelOIDC_ExceptionStateMismatch"));
+        }
+        unset($_SESSION['loginoidc_state']);
     }
 }
