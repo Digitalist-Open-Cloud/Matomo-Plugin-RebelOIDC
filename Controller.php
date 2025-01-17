@@ -403,12 +403,12 @@ class Controller extends \Piwik\Plugin\Controller
     }
 
     /**
- * Decode a JWT (access token) without verification (for roles extraction).
- *
- * @param string $token The JWT access token.
- * @return array Decoded token payload.
- * @throws Exception
- */
+     * Decode a JWT (access token) without verification (for roles extraction).
+     *
+     * @param string $token The JWT access token.
+     * @return array Decoded token payload.
+     * @throws Exception
+     */
     private function decodeJwt(string $token): array
     {
         // Explode the token into its three parts: header, payload, and signature
