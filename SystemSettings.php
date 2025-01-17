@@ -383,7 +383,7 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
      */
     private function createUsernameAttributeSetting(): SystemSetting
     {
-        return $this->makeSetting('usernameAttribute', 'email', FieldConfig::TYPE_STRING, function (FieldConfig $field) {
+        return $this->makeSetting('usernameAttribute', 'preferred_username', FieldConfig::TYPE_STRING, function (FieldConfig $field) {
             $field->title = 'Username Attribute from OIDC';
             $field->description = 'The OIDC claim to use as username (e.g., "preferred_username", "email", "id")';
             $field->uiControl = FieldConfig::UI_CONTROL_TEXT;

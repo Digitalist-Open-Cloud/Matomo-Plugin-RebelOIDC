@@ -18,7 +18,7 @@ Install from Marketplace, or put the files from this repo in <MATOMO_INSTALLATIO
 
 ## Setup
 
-As an super user, go to Admin (cog wheel) -> System -> General settings -> Rebel OIIDC.
+As an super user, go to Admin (cog wheel) -> System -> General settings -> Rebel OIDC.
 
 For specific settings for your OIDC provider, see the [faq](docs/faq.md)
 
