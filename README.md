@@ -8,6 +8,10 @@
 
 Login to Matomo with third party authentication services that provides Open ID Connect (OIDC). Check in [FAQ](docs/faq.md) for details on how to connect with your provider.
 
+## What is Rebel?
+
+Rebel is short for RebelMetrics. RebelMetrics is Matomo on super charged batteries from Digitalist Open Cloud, with pre-configured dashboards, SQL-lab and more. We offer 1 month free trial for organizations and companies. If you are interested, email us at <cloud@digitalist.com> to book a demo.
+
 ## Installation
 
 Install from Marketplace, or put the files from this repo in <MATOMO_INSTALLATION>/plugins/RebelOIDC and activate it.
