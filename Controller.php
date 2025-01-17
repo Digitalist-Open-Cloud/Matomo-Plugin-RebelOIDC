@@ -24,8 +24,6 @@ use Piwik\Session\SessionInitializer;
 use Piwik\Url;
 use Piwik\Plugins\RebelOIDC\SystemSettings;
 use Piwik\Plugins\RebelOIDC\Helper;
-use Piwik\Notification;
-use Piwik\AuthResult;
 
 class Controller extends \Piwik\Plugin\Controller
 {
@@ -248,6 +246,7 @@ class Controller extends \Piwik\Plugin\Controller
 
         $user = $this->getUserByRemoteId(self::OIDC_PROVIDER, $providerUserId);
 
+
         // auto linking
         // if setting is activated, the oidc account is automatically linked, if the user ID of the OpenID Connect Provider is equal to the internal matomo user ID
         if ($settings->autoLinking->getValue()) {
@@ -264,7 +263,7 @@ class Controller extends \Piwik\Plugin\Controller
         if (empty($user)) {
             if (Piwik::isUserIsAnonymous()) {
                 // user with the remote id is currently not in our database
-                $this->signupUser($settings, $providerUserId, $result->email);
+                $this->signupUser($settings, $providerUserId, $result->email, $result);
             } else {
                 // link current user with the remote user
                 $this->linkAccount($providerUserId);
@@ -297,7 +296,7 @@ class Controller extends \Piwik\Plugin\Controller
      * @param  string          $providerEmail    Users email address
      * @return void
      */
-    private function signupUser($settings, string $providerUserId, string $providerEmail = null): void
+    private function signupUser($settings, string $providerUserId, string $providerEmail = null, $result): void
     {
         // only sign up user if setting is enabled
         if ($settings->allowSignup->getValue()) {
@@ -308,11 +307,8 @@ class Controller extends \Piwik\Plugin\Controller
             if (empty($providerUserId)) {
                 throw new Exception(Piwik::translate("RebelOIDC_ExceptionUserNotFoundAndNoUserId"));
             }
-            if ($settings->useEmailAsUsername->getValue()) {
-                $userId = $providerEmail;
-            } else {
-                $userId = $providerUserId;
-            }
+
+            $userId = $this->determineUsername($settings, $result, $providerUserId, $providerEmail);
             // verify email address domain is allowed to sign up
             if (!empty($settings->allowedSignupDomains->getValue())) {
                 $signupDomain = substr($providerEmail, strpos($providerEmail, "@") + 1);
@@ -463,4 +459,24 @@ class Controller extends \Piwik\Plugin\Controller
         Url::redirectToUrl($loginUrl);
         exit();
     }
+
+    private function determineUsername($settings, $userInfo, string $providerUserId, string $providerEmail): string
+    {
+    // Get the configured username attribute
+        $usernameAttribute = $settings->usernameAttribute->getValue();
+
+        if (!empty($usernameAttribute) && isset($userInfo->$usernameAttribute)) {
+            // Use the configured attribute if available
+            return $userInfo->$usernameAttribute;
+        }
+
+        if ($settings->fallbackToEmail->getValue() && !empty($providerEmail)) {
+            // Use email as fallback if configured
+            return $providerEmail;
+        }
+
+    // Default to provider user ID if no other option is available
+        return $providerUserId;
+    }
+
 }
