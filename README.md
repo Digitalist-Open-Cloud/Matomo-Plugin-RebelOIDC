@@ -16,9 +16,9 @@ Go to the system settings and add needed settings to get things working. See the
 
 ## Sync users
 
-### Keycloak user import
+### Keycloak
 
-A console command can be used to sync users from Keycloak to Matomo:
+A console command can be used to sync users from Keycloak to Matomo. While this is not using OIDC, it is something that could be used to import or sync your users to Matomo to be able to set user permissions etc. If you rerun the Keycloak sync, and user already exists, it will not import it again.
 
 ```sh
 ./console rebeloidc:keycloak-sync --url=keycloak.url --realm=A-realm --client=a-keycloak-service-account --secret=a-secret
@@ -28,7 +28,7 @@ Recommendation is to use a service account in Keycloak for the operation, set it
 
 The console command overwrites the defaults for user creation in system settings, so make sure you match the settings you have when you run the command.
 
-You can specify which field to use for username, and if add default view permissions on one site, like:
+You can specify which field to use for username, and add default view permissions on one site, like:
 
 ```sh
 ./console rebeloidc:keycloak-sync --url=keycloak.url --realm=A-realm --client=a-keycloak-service-account --secret=a-secret --user-field=email --id-site=1
