@@ -55,6 +55,8 @@
     "ExceptionAlreadyLinkedToDifferentAccount": "The remote OAuth user is already linked to another account.",
     "None": "None",
     "SettingAllowedRole": "Restrict user login with specific role",
-    "SettingAllowedRoleHelp": "Role to require, like matomo-user"
+    "SettingAllowedRoleHelp": "Role to require, like matomo-user",
+    "InitialIdSite": "Initial site id",
+    "InitialIdSiteHelp": "If added, the users will have view permissions on this site."
   }
 }

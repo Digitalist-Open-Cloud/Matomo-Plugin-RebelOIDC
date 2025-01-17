@@ -425,7 +425,7 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
     private function createInitialIdSiteSetting(): SystemSetting
     {
         // Create the system setting for the dropdown
-        return $this->makeSetting("initialIdSite", $default = null, FieldConfig::TYPE_STRING, function (FieldConfig $field) {
+        return $this->makeSetting("initialIdSite", $default = 'none', FieldConfig::TYPE_STRING, function (FieldConfig $field) {
             $field->title = Piwik::translate("RebelOIDC_InitialIdSite");
             $field->description = Piwik::translate("RebelOIDC_InitialIdSiteHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_SINGLE_SELECT;
@@ -498,8 +498,8 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
     private function createAllowedRoleSetting(): SystemSetting
     {
         return $this->makeSetting("allowedRole", $default = "", FieldConfig::TYPE_STRING, function (FieldConfig $field) {
-            $field->title = Piwik::translate("LoginOIDC_SettingAllowedRole");
-            $field->description = Piwik::translate("LoginOIDC_SettingAllowedRoleHelp");
+            $field->title = Piwik::translate("RebelOIDC_SettingAllowedRole");
+            $field->description = Piwik::translate("RebelOIDC_SettingAllowedRoleHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_TEXT;
         });
     }

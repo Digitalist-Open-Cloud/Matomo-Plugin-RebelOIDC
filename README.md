@@ -6,19 +6,37 @@
 
 ## Description
 
-Login to Matomo with third party authentication services that provides Open ID Connect (OIDC). Check in [FAQ](docs/faq.md) for details on how to connect.
+Login to Matomo with third party authentication services that provides Open ID Connect (OIDC). Check in [FAQ](docs/faq.md) for details on how to connect with your provider.
+
+## What is Rebel?
+
+Rebel is short for RebelMetrics. RebelMetrics is Matomo on super charged batteries from Digitalist Open Cloud, with pre-configured dashboards, SQL-lab and more. We offer 1 month free trial for organizations and companies. If you are interested, email us at <cloud@digitalist.com> to book a demo.
 
 ## Installation
 
-Put the files from this repo in <MATOMO_INSTALLATION>/plugins/RebelOIDC and activate it.
+Install from Marketplace, or put the files from this repo in <MATOMO_INSTALLATION>/plugins/RebelOIDC and activate it.
 
-Go to the system settings and add needed settings to get things working. See the [faq](docs/faq.md) for hints how to setup your OIDC application.
+## Setup
+
+As an super user, go to Admin (cog wheel) -> System -> General settings -> Rebel OIIDC.
+
+For specific settings for your OIDC provider, see the [faq](docs/faq.md)
+
+### Initial site
+
+You can set an initial site for all new users which logs in with OIDC for the first time. Default is set to "none", which means that the first a user logs in and has no permissions set, they will get an error and a notification that they need to contact the admin of the site.
+
+### Restrict user login with specific role
+
+If you have an organisation where not all in the organisations should have access, you can choose which role should have access to Matomo. The role needs to be part of the JWT token (default behavior in many OIDC providers, otherwise you need to configure it).
 
 ## Sync users
 
 ### Keycloak
 
-A console command can be used to sync users from Keycloak to Matomo. While this is not using OIDC, it is something that could be used to import or sync your users to Matomo to be able to set user permissions etc. If you rerun the Keycloak sync, and user already exists, it will not import it again.
+This function is in beta, and should be handled with care.
+
+A console command can be used to sync users from Keycloak to Matomo. While this is not using OIDC, it is something that could be used to import or sync your users to Matomo to be able to set user permissions etc. before they login the first time. If you rerun the Keycloak sync, and user already exists, it will not import it again.
 
 ```sh
 ./console rebeloidc:keycloak-sync --url=keycloak.url --realm=A-realm --client=a-keycloak-service-account --secret=a-secret
@@ -36,7 +54,7 @@ You can specify which field to use for username, and add default view permission
 
 Default field to use for user name is `id` when running the console command.
 
-Hopefully. more integrations to other supported OIDC authenticators will be added further on.
+Hopefully. more integrations to other supported OIDC authenticators will be added further on (contributions are more than welcome!).
 
 ## Fork
 
@@ -44,4 +62,4 @@ This plugin started as a fork of the [LoginOIDC](https://github.com/dominik-th/m
 
 ## License
 
-GNU General Public License v3.0
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
