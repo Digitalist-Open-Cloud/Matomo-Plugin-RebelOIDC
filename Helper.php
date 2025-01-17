@@ -149,42 +149,42 @@ trait Helper
  * @return string Access token.
  * @throws Exception
  */
-private function getAccessToken(string $baseUrl, string $realm, string $clientId, string $clientSecret): string
-{
-    $tokenUrl = $baseUrl . "/realms/" . $realm . "/protocol/openid-connect/token";
+    private function getAccessToken(string $baseUrl, string $realm, string $clientId, string $clientSecret): string
+    {
+        $tokenUrl = $baseUrl . "/realms/" . $realm . "/protocol/openid-connect/token";
 
-    $ch = curl_init($tokenUrl);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
+        $ch = curl_init($tokenUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
         'grant_type' => 'client_credentials',
         'client_id' => $clientId,
         'client_secret' => $clientSecret,
-    ]));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        ]));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
         'Content-Type: application/x-www-form-urlencoded',
-    ]);
+        ]);
 
-    $response = curl_exec($ch);
+        $response = curl_exec($ch);
 
-    if (curl_errno($ch)) {
-        throw new Exception('Error getting access token: ' . curl_error($ch));
+        if (curl_errno($ch)) {
+            throw new Exception('Error getting access token: ' . curl_error($ch));
+        }
+
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        if ($httpCode >= 400) {
+            throw new Exception("Failed to retrieve token. HTTP Code: $httpCode. Response: $response");
+        }
+
+        $tokenData = json_decode($response, true);
+        curl_close($ch);
+
+        if (!isset($tokenData['access_token'])) {
+            throw new Exception('Access token not found in Keycloak response');
+        }
+
+        return $tokenData['access_token'];
     }
-
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    if ($httpCode >= 400) {
-        throw new Exception("Failed to retrieve token. HTTP Code: $httpCode. Response: $response");
-    }
-
-    $tokenData = json_decode($response, true);
-    curl_close($ch);
-
-    if (!isset($tokenData['access_token'])) {
-        throw new Exception('Access token not found in Keycloak response');
-    }
-
-    return $tokenData['access_token'];
-}
 
 /**
  * Fetch users from the Keycloak Admin API.
@@ -195,33 +195,33 @@ private function getAccessToken(string $baseUrl, string $realm, string $clientId
  * @return array List of users.
  * @throws Exception
  */
-private function fetchUsers(string $baseUrl, string $realm, string $token): array
-{
-    $usersUrl = $baseUrl . "/admin/realms/" . $realm . "/users";
+    private function fetchUsers(string $baseUrl, string $realm, string $token): array
+    {
+        $usersUrl = $baseUrl . "/admin/realms/" . $realm . "/users";
 
-    $ch = curl_init($usersUrl);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        $ch = curl_init($usersUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
         'Authorization: Bearer ' . $token,
         'Content-Type: application/json',
-    ]);
+        ]);
 
-    $response = curl_exec($ch);
+        $response = curl_exec($ch);
 
-    if (curl_errno($ch)) {
-        throw new Exception('Error retrieving users: ' . curl_error($ch));
+        if (curl_errno($ch)) {
+            throw new Exception('Error retrieving users: ' . curl_error($ch));
+        }
+
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode >= 400) {
+            throw new Exception("Failed to fetch users. HTTP Code: $httpCode. Response: $response");
+        }
+
+        $users = json_decode($response, true);
+        return is_array($users) ? $users : [];
     }
-
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    if ($httpCode >= 400) {
-        throw new Exception("Failed to fetch users. HTTP Code: $httpCode. Response: $response");
-    }
-
-    $users = json_decode($response, true);
-    return is_array($users) ? $users : [];
-}
 /**
  * Fetch realm-level roles for a specific user from Keycloak.
  *
@@ -232,50 +232,50 @@ private function fetchUsers(string $baseUrl, string $realm, string $token): arra
  * @return array Roles assigned to the user at the realm level.
  * @throws Exception
  */
-private function fetchRealmRoles(string $baseUrl, string $realm, string $userId, string $token): array
-{
-    // Use the /role-mappings/realm endpoint
-    $rolesUrl = $baseUrl . "/admin/realms/" . $realm . "/users/" . $userId . "/role-mappings/realm";
+    private function fetchRealmRoles(string $baseUrl, string $realm, string $userId, string $token): array
+    {
+        // Use the /role-mappings/realm endpoint
+        $rolesUrl = $baseUrl . "/admin/realms/" . $realm . "/users/" . $userId . "/role-mappings/realm";
 
-    $ch = curl_init($rolesUrl);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        $ch = curl_init($rolesUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
         'Authorization: Bearer ' . $token,
         'Content-Type: application/json',
-    ]);
+        ]);
 
-    $response = curl_exec($ch);
+        $response = curl_exec($ch);
 
-    if (curl_errno($ch)) {
-        throw new Exception('Error retrieving realm roles for user ' . $userId . ': ' . curl_error($ch));
-    }
-
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-    curl_close($ch);
-
-    if ($httpCode === 404 || empty($response)) {
-        return []; // No roles assigned
-    } elseif ($httpCode >= 400) {
-        throw new Exception("Failed to fetch realm roles for user $userId. HTTP Code: $httpCode. Response: $response");
-    }
-
-    // Decode the JSON response
-    $rolesData = json_decode($response, true);
-    if (!is_array($rolesData)) {
-        return [];
-    }
-
-    // Extract the role names
-    $roles = [];
-    foreach ($rolesData as $role) {
-        if (isset($role['name'])) {
-            $roles[] = $role['name']; // Role name
+        if (curl_errno($ch)) {
+            throw new Exception('Error retrieving realm roles for user ' . $userId . ': ' . curl_error($ch));
         }
-    }
 
-    return $roles; // Return the list of realm roles
-}
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+        curl_close($ch);
+
+        if ($httpCode === 404 || empty($response)) {
+            return []; // No roles assigned
+        } elseif ($httpCode >= 400) {
+            throw new Exception("Failed to fetch realm roles for user $userId. HTTP Code: $httpCode. Response: $response");
+        }
+
+        // Decode the JSON response
+        $rolesData = json_decode($response, true);
+        if (!is_array($rolesData)) {
+            return [];
+        }
+
+        // Extract the role names
+        $roles = [];
+        foreach ($rolesData as $role) {
+            if (isset($role['name'])) {
+                $roles[] = $role['name']; // Role name
+            }
+        }
+
+        return $roles; // Return the list of realm roles
+    }
 
 /**
  * Fetch all users from Keycloak along with their realm roles.
@@ -287,22 +287,21 @@ private function fetchRealmRoles(string $baseUrl, string $realm, string $userId,
  * @return array List of users with their realm roles.
  * @throws Exception
  */
-private function getUsers(string $baseUrl, string $realm, string $clientId, string $clientSecret): array
-{
-    // Step 1: Get an Access Token
-    $token = $this->getAccessToken($baseUrl, $realm, $clientId, $clientSecret);
+    private function getUsers(string $baseUrl, string $realm, string $clientId, string $clientSecret): array
+    {
+        // Step 1: Get an Access Token
+        $token = $this->getAccessToken($baseUrl, $realm, $clientId, $clientSecret);
 
-    // Step 2: Fetch Users
-    $users = $this->fetchUsers($baseUrl, $realm, $token);
+        // Step 2: Fetch Users
+        $users = $this->fetchUsers($baseUrl, $realm, $token);
 
-    // Step 3: Enrich Users with Realm Roles
-    foreach ($users as &$user) {
-        $userId = $user['id'];
-        $roles = $this->fetchRealmRoles($baseUrl, $realm, $userId, $token);
-        $user['roles'] = $roles; // Append roles directly to the user array
+        // Step 3: Enrich Users with Realm Roles
+        foreach ($users as &$user) {
+            $userId = $user['id'];
+            $roles = $this->fetchRealmRoles($baseUrl, $realm, $userId, $token);
+            $user['roles'] = $roles; // Append roles directly to the user array
+        }
+
+        return $users;
     }
-
-    return $users;
-}
-
 }

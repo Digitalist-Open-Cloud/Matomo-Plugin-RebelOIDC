@@ -139,6 +139,20 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
     public $redirectUriOverride;
 
     /**
+     * Create username from attribute.
+     *
+     * @var Setting
+     */
+    public $usernameAttribute;
+
+    /**
+     * Use email as fallback if attribute does not exist.
+     *
+     * @var Setting
+     */
+     public $fallbackToEmail;
+
+    /**
      * The domains which are allowed to create accounts.
      *
      * @var Setting
@@ -179,7 +193,8 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
         $this->userInfoUrl = $this->createUserInfoUrlSetting();
         $this->endSessionUrl = $this->createEndSessionUrlSetting();
         $this->userInfoId = $this->createUserInfoIdSetting();
-        $this->useEmailAsUsername = $this->createUseEmailAsUsernameSetting();
+        $this->usernameAttribute = $this->createUsernameAttributeSetting();
+        $this->fallbackToEmail = $this->createFallbackToEmailSetting();
         $this->clientId = $this->createClientIdSetting();
         $this->clientSecret = $this->createClientSecretSetting();
         $this->scope = $this->createScopeSetting();
@@ -362,15 +377,24 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
     }
 
     /**
-     * Add useEmailAsUsername setting.
+     * Add setting to configure attribute for user name creation in Matomo
      *
      * @return SystemSetting
      */
-    private function createUseEmailAsUsernameSetting(): SystemSetting
+    private function createUsernameAttributeSetting(): SystemSetting
     {
-        return $this->makeSetting("useEmailAsUsername", $default = true, FieldConfig::TYPE_BOOL, function (FieldConfig $field) {
-            $field->title = Piwik::translate("RebelOIDC_SettingUseEmailAsUsername");
-            $field->description = Piwik::translate("RebelOIDC_SettingUseEmailAsUsernameHelp");
+        return $this->makeSetting('usernameAttribute', 'email', FieldConfig::TYPE_STRING, function (FieldConfig $field) {
+            $field->title = 'Username Attribute from OIDC';
+            $field->description = 'The OIDC claim to use as username (e.g., "preferred_username", "email", "id")';
+            $field->uiControl = FieldConfig::UI_CONTROL_TEXT;
+        });
+    }
+
+    private function createFallbackToEmailSetting(): SystemSetting
+    {
+        return $this->makeSetting('fallbackToEmail', true, FieldConfig::TYPE_BOOL, function (FieldConfig $field) {
+            $field->title = 'Fallback to Email';
+            $field->description = 'Use email as username if the username attribute defined is not available';
             $field->uiControl = FieldConfig::UI_CONTROL_CHECKBOX;
         });
     }
