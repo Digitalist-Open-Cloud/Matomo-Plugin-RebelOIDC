@@ -153,10 +153,18 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
     public $initialIdSite;
 
     /**
+     * The allowedRole.
+     *
+     * @var Setting
+     */
+    public $allowedRole;
+
+    /**
      * Initialize the plugin settings.
      *
      * @var Setting
      */
+
     protected function init()
     {
         $this->disableSuperuser = $this->createDisableSuperuserSetting();
@@ -178,6 +186,7 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
         $this->redirectUriOverride = $this->createRedirectUriOverrideSetting();
         $this->allowedSignupDomains = $this->createAllowedSignupDomainsSetting();
         $this->initialIdSite = $this->createInitialIdSiteSetting();
+        $this->allowedRole = $this->createAllowedRoleSetting();
     }
 
     /**
@@ -478,6 +487,20 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
                     }
                 }
             };
+        });
+    }
+
+    /**
+     * Add allowed signup domains setting.
+     *
+     * @return SystemSetting
+     */
+    private function createAllowedRoleSetting(): SystemSetting
+    {
+        return $this->makeSetting("allowedRole", $default = "", FieldConfig::TYPE_STRING, function (FieldConfig $field) {
+            $field->title = Piwik::translate("LoginOIDC_SettingAllowedRole");
+            $field->description = Piwik::translate("LoginOIDC_SettingAllowedRoleHelp");
+            $field->uiControl = FieldConfig::UI_CONTROL_TEXT;
         });
     }
 }
