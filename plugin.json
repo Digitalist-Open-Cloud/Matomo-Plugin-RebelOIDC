@@ -28,9 +28,6 @@
         "php": ">=8.0.0",
         "matomo": ">=5.0.0-stable,<6.0.0-b1"
     },
-    "donate": {
-        "paypal": "matomo-loginoidc@dthiemermann.org"
-    },
     "support": {
         "email": "cloud@digitalist.com",
         "issues": "https:\/\/github.com\/Digitalist-Open-Cloud\/Matomo-Plugin-RebelOIDC\/issues",
