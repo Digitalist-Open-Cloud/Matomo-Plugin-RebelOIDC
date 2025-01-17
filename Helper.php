@@ -139,16 +139,16 @@ trait Helper
         return Db::fetchRow($sql, array($provider, Piwik::getCurrentUserLogin()));
     }
 
-/**
- * Fetch an access token from Keycloak using the client credentials.
- *
- * @param string $baseUrl Base URL of the Keycloak server.
- * @param string $realm Keycloak realm.
- * @param string $clientId Client ID for the credentials.
- * @param string $clientSecret Client secret for the credentials.
- * @return string Access token.
- * @throws Exception
- */
+    /**
+     * Fetch an access token from Keycloak using the client credentials.
+     *
+     * @param string $baseUrl Base URL of the Keycloak server.
+     * @param string $realm Keycloak realm.
+     * @param string $clientId Client ID for the credentials.
+     * @param string $clientSecret Client secret for the credentials.
+     * @return string Access token.
+     * @throws Exception
+     */
     private function getAccessToken(string $baseUrl, string $realm, string $clientId, string $clientSecret): string
     {
         $tokenUrl = $baseUrl . "/realms/" . $realm . "/protocol/openid-connect/token";
@@ -157,12 +157,12 @@ trait Helper
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
-        'grant_type' => 'client_credentials',
-        'client_id' => $clientId,
-        'client_secret' => $clientSecret,
+            'grant_type' => 'client_credentials',
+            'client_id' => $clientId,
+            'client_secret' => $clientSecret,
         ]));
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Content-Type: application/x-www-form-urlencoded',
+            'Content-Type: application/x-www-form-urlencoded',
         ]);
 
         $response = curl_exec($ch);
@@ -186,15 +186,15 @@ trait Helper
         return $tokenData['access_token'];
     }
 
-/**
- * Fetch users from the Keycloak Admin API.
- *
- * @param string $baseUrl Base URL of the Keycloak server.
- * @param string $realm Keycloak realm.
- * @param string $token Access token for the API.
- * @return array List of users.
- * @throws Exception
- */
+    /**
+     * Fetch users from the Keycloak Admin API.
+     *
+     * @param string $baseUrl Base URL of the Keycloak server.
+     * @param string $realm Keycloak realm.
+     * @param string $token Access token for the API.
+     * @return array List of users.
+     * @throws Exception
+     */
     private function fetchUsers(string $baseUrl, string $realm, string $token): array
     {
         $usersUrl = $baseUrl . "/admin/realms/" . $realm . "/users";
@@ -202,8 +202,8 @@ trait Helper
         $ch = curl_init($usersUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Authorization: Bearer ' . $token,
-        'Content-Type: application/json',
+            'Authorization: Bearer ' . $token,
+            'Content-Type: application/json',
         ]);
 
         $response = curl_exec($ch);
@@ -222,16 +222,17 @@ trait Helper
         $users = json_decode($response, true);
         return is_array($users) ? $users : [];
     }
-/**
- * Fetch realm-level roles for a specific user from Keycloak.
- *
- * @param string $baseUrl Base URL of the Keycloak server.
- * @param string $realm Keycloak realm.
- * @param string $userId User ID in Keycloak.
- * @param string $token Access token for the API.
- * @return array Roles assigned to the user at the realm level.
- * @throws Exception
- */
+
+    /**
+     * Fetch realm-level roles for a specific user from Keycloak.
+     *
+     * @param string $baseUrl Base URL of the Keycloak server.
+     * @param string $realm Keycloak realm.
+     * @param string $userId User ID in Keycloak.
+     * @param string $token Access token for the API.
+     * @return array Roles assigned to the user at the realm level.
+     * @throws Exception
+     */
     private function fetchRealmRoles(string $baseUrl, string $realm, string $userId, string $token): array
     {
         // Use the /role-mappings/realm endpoint
@@ -240,8 +241,8 @@ trait Helper
         $ch = curl_init($rolesUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Authorization: Bearer ' . $token,
-        'Content-Type: application/json',
+            'Authorization: Bearer ' . $token,
+            'Content-Type: application/json',
         ]);
 
         $response = curl_exec($ch);
@@ -277,25 +278,20 @@ trait Helper
         return $roles; // Return the list of realm roles
     }
 
-/**
- * Fetch all users from Keycloak along with their realm roles.
- *
- * @param string $baseUrl Base URL of the Keycloak server.
- * @param string $realm Keycloak realm.
- * @param string $clientId Client ID for the API (not used for roles).
- * @param string $clientSecret Client secret for the API.
- * @return array List of users with their realm roles.
- * @throws Exception
- */
+    /**
+     * Fetch all users from Keycloak along with their realm roles.
+     *
+     * @param string $baseUrl Base URL of the Keycloak server.
+     * @param string $realm Keycloak realm.
+     * @param string $clientId Client ID for the API (not used for roles).
+     * @param string $clientSecret Client secret for the API.
+     * @return array List of users with their realm roles.
+     * @throws Exception
+     */
     private function getUsers(string $baseUrl, string $realm, string $clientId, string $clientSecret): array
     {
-        // Step 1: Get an Access Token
         $token = $this->getAccessToken($baseUrl, $realm, $clientId, $clientSecret);
-
-        // Step 2: Fetch Users
         $users = $this->fetchUsers($baseUrl, $realm, $token);
-
-        // Step 3: Enrich Users with Realm Roles
         foreach ($users as &$user) {
             $userId = $user['id'];
             $roles = $this->fetchRealmRoles($baseUrl, $realm, $userId, $token);
