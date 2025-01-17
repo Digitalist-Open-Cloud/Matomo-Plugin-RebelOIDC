@@ -20,6 +20,7 @@ use Piwik\Plugins\RebelOIDC\Url;
 use Piwik\Request;
 use Piwik\Session;
 use Piwik\Plugin;
+use Piwik\Notification;
 
 class RebelOIDC extends Plugin
 {
@@ -35,7 +36,8 @@ class RebelOIDC extends Plugin
             "Template.loginNav" => "renderRebelOIDCMod",
             "Template.confirmPasswordContent" => "renderConfirmPasswordMod",
             "Login.logout" => "logoutMod",
-            "Login.userRequiresPasswordConfirmation" => "userRequiresPasswordConfirmation"
+            "Login.userRequiresPasswordConfirmation" => "userRequiresPasswordConfirmation",
+            'Login.recordFailedLoginAttempt'   => 'onFailedLoginRecordAttempt',
         );
     }
 

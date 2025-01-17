@@ -24,6 +24,8 @@ use Piwik\Session\SessionInitializer;
 use Piwik\Url;
 use Piwik\Plugins\RebelOIDC\SystemSettings;
 use Piwik\Plugins\RebelOIDC\Helper;
+use Piwik\Notification;
+use Piwik\AuthResult;
 
 class Controller extends \Piwik\Plugin\Controller
 {
@@ -211,6 +213,16 @@ class Controller extends \Piwik\Plugin\Controller
             throw new Exception(Piwik::translate("RebelOIDC_ExceptionInvalidResponse"));
         }
 
+        $accessToken = $result->access_token;
+        $decodedToken = $this->decodeJwt($accessToken);
+        $roles = $this->extractRoles($decodedToken, $settings->clientId->getValue());
+
+        $has_correct_role = in_array($settings->allowedRole->getValue(), $roles);
+        if (!empty($settings->allowedRole->getValue()) && !$has_correct_role) {
+            $this->redirectToLogin("You do not have the correct role for access");
+            throw new Exception(Piwik::translate("LoginOIDC_ExceptionInvalidResponse"));
+        }
+
         $_SESSION['loginoidc_idtoken'] = empty($result->id_token) ? null : $result->id_token;
         $_SESSION['loginoidc_auth'] = true;
 
@@ -388,5 +400,67 @@ class Controller extends \Piwik\Plugin\Controller
             throw new Exception(Piwik::translate("RebelOIDC_ExceptionStateMismatch"));
         }
         unset($_SESSION['loginoidc_state']);
+    }
+
+    /**
+ * Decode a JWT (access token) without verification (for roles extraction).
+ *
+ * @param string $token The JWT access token.
+ * @return array Decoded token payload.
+ * @throws Exception
+ */
+    private function decodeJwt(string $token): array
+    {
+        // Explode the token into its three parts: header, payload, and signature
+        $parts = explode('.', $token);
+        if (count($parts) !== 3) {
+            throw new Exception('Invalid JWT token format.');
+        }
+
+        // Base64-decode the payload (second part of the JWT)
+        $payload = base64_decode($parts[1]);
+
+        // Convert JSON payload to a PHP array
+        $decoded = json_decode($payload, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new Exception('Failed to decode JWT payload: ' . json_last_error_msg());
+        }
+
+        return $decoded;
+    }
+
+/**
+ * Extract roles from a decoded JWT token.
+ *
+ * @param array $decodedToken Decoded JWT payload.
+ * @param string|null $clientId (Optional) Specific client ID for client roles.
+ * @return array Roles assigned to the user.
+ */
+    private function extractRoles(array $decodedToken, ?string $clientId = null): array
+    {
+        $roles = [];
+
+        // 1. Extract realm roles (if present in the token)
+        if (isset($decodedToken['realm_access']['roles'])) {
+            $roles = array_merge($roles, $decodedToken['realm_access']['roles']);
+        }
+
+        // 2. Extract client-specific roles (if a client ID is provided and roles exist)
+        if ($clientId && isset($decodedToken['resource_access'][$clientId]['roles'])) {
+            $roles = array_merge($roles, $decodedToken['resource_access'][$clientId]['roles']);
+        }
+
+        return $roles;
+    }
+
+    /**
+     * @param string $message
+     */
+    private function redirectToLogin($message)
+    {
+        $url = Url::getCurrentUrlWithoutQueryString();
+        $loginUrl = $url . '?notification=' . urlencode($message);
+        Url::redirectToUrl($loginUrl);
+        exit();
     }
 }
