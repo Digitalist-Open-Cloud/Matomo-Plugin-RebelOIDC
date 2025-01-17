@@ -22,6 +22,12 @@ As an super user, go to Admin (cog wheel) -> System -> General settings -> Rebel
 
 For specific settings for your OIDC provider, see the [faq](docs/faq.md)
 
+### Username Attribute from OIDC
+
+You can use any claim, like preferred_username, id etc. to create the Matomo user name.
+
+[Standard claims](https://openid.net/specs/openid-connect-core-1_0.html#StandardClaims)
+
 ### Initial site
 
 You can set an initial site for all new users which logs in with OIDC for the first time. Default is set to "none", which means that the first a user logs in and has no permissions set, they will get an error and a notification that they need to contact the admin of the site.
