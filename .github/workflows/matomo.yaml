@@ -21,7 +21,7 @@ jobs:
       - name: Run tests
         uses: Digitalist-Open-Cloud/Matomo-github-action-tests@main
         with:
-          plugin-name: 'RebelNotifications'
+          plugin-name: 'RebelOIDC'
           php-version: ${{ matrix.php }}
           test-type: 'PluginTests'
           matomo-test-branch: ${{ matrix.target }}
