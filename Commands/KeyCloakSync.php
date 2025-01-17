@@ -8,12 +8,14 @@ use Piwik\Plugins\RebelOIDC\Helper;
 use Piwik\Plugins\UsersManager\API as UsersManagerApi;
 use Piwik\Common;
 use Piwik\Db;
+use Piwik\Plugins\RebelOIDC\SystemSettings;
 
 class KeyCloakSync extends ConsoleCommand
 {
     use Helper;
 
     public const SUCCESS = 0;
+    public const ERROR = 1;
     private const PROVIDER_NAME = 'oidc';
 
     /**
@@ -38,7 +40,11 @@ class KeyCloakSync extends ConsoleCommand
     {
         $input = $this->getInput();
         $output = $this->getOutput();
-
+        $settings = new SystemSettings();
+        if (!$this->isPluginSetup($settings)) {
+            $output->writeln('<error>RebelODIC is not setup yet</error>');
+            return self::ERROR;
+        }
         // Validate required options
         try {
             $baseUrl = $this->validateOption($input->getOption('url'), '--url');
@@ -47,7 +53,7 @@ class KeyCloakSync extends ConsoleCommand
             $secret = $this->validateOption($input->getOption('secret'), '--secret');
         } catch (Exception $e) {
             $output->writeln('<error>' . $e->getMessage() . '</error>');
-            return self::SUCCESS; // Exit gracefully
+            return self::SUCCESS;
         }
 
         // Optional options with default values
@@ -84,7 +90,7 @@ class KeyCloakSync extends ConsoleCommand
         $providerUserId = $user['id'] ?? null;
 
         if (empty($userId) || empty($providerEmail) || empty($providerUserId)) {
-            throw new Exception('User missing required fields (id, email, or userField).');
+            throw new Exception('User is missing required fields.');
         }
 
         if ($this->addUser($userId, $providerUserId, $providerEmail, $initialIdSite)) {
