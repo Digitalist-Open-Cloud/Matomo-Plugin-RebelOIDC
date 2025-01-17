@@ -65,17 +65,13 @@ class Controller extends \Piwik\Plugin\Controller
      * @param Auth                $auth
      * @param SessionInitializer  $sessionInitializer
      */
-    public function __construct(
-        Auth $auth = null,
-        SessionInitializer $sessionInitializer = null,
-        LoggerInterface $logger = null
-    ) {
+    public function __construct(Auth $auth = null, SessionInitializer $sessionInitializer = null)
+    {
         parent::__construct();
 
         $this->auth = $auth ?: new Auth();
         $this->sessionInitializer = $sessionInitializer ?: new SessionInitializer();
         $this->passwordVerify = StaticContainer::get("Piwik\Plugins\Login\PasswordVerifier");
-        $this->logger = $logger ?: StaticContainer::get(LoggerInterface::class);
     }
 
     /**
