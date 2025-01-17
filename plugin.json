@@ -14,11 +14,6 @@
     "homepage": "https:\/\/github.com\/Digitalist-Open-Cloud\/Matomo-Plugin-RebelOIDC",
     "authors": [
         {
-            "name": "Dominik Thiemermann",
-            "email": "hello@dthiemermann.org",
-            "homepage": "https:\/\/www.dthiemermann.org"
-        },
-        {
             "name": "Digitalist Open Cloud",
             "email": "cloud@digitalist.com",
             "homepage": "https:\/\/digitalist.cloud"
