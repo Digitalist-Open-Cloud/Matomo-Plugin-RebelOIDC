@@ -62,6 +62,7 @@ class KeyCloakSync extends ConsoleCommand
 
         try {
             $users = $this->getUsers($baseUrl, $realm, $client, $secret);
+            var_dump($users);
             $output->writeln(sprintf('<info>Fetched %d users from Keycloak.</info>', count($users)));
         } catch (Exception $e) {
             $output->writeln('<error>Failed to fetch users from Keycloak: ' . $e->getMessage() . '</error>');

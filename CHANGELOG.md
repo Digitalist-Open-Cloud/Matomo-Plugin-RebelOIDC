@@ -1,5 +1,11 @@
 # Change Log
 
+## [5.1.1] - 2025-01-18
+
+### Added
+
+- Possibility to configure which claim to use for user name in Matomo - like id, email, preferred_username etc.
+
 ## [5.1.0] - 2025-01-17
 
 ### Added
