@@ -425,13 +425,13 @@ class Controller extends \Piwik\Plugin\Controller
         return $decoded;
     }
 
-/**
- * Extract roles from a decoded JWT token.
- *
- * @param array $decodedToken Decoded JWT payload.
- * @param string|null $clientId (Optional) Specific client ID for client roles.
- * @return array Roles assigned to the user.
- */
+    /**
+     * Extract roles from a decoded JWT token.
+     *
+     * @param array $decodedToken Decoded JWT payload.
+     * @param string|null $clientId (Optional) Specific client ID for client roles.
+     * @return array Roles assigned to the user.
+     */
     private function extractRoles(array $decodedToken, ?string $clientId = null): array
     {
         $roles = [];
@@ -452,7 +452,7 @@ class Controller extends \Piwik\Plugin\Controller
     /**
      * @param string $message
      */
-    private function redirectToLogin($message)
+    private function redirectToLogin($message): void
     {
         $url = Url::getCurrentUrlWithoutQueryString();
         $loginUrl = $url . '?notification=' . urlencode($message);
@@ -460,6 +460,9 @@ class Controller extends \Piwik\Plugin\Controller
         exit();
     }
 
+    /**
+     * @return string
+     */
     private function determineUsername($settings, $userInfo, string $providerUserId, string $providerEmail): string
     {
     // Get the configured username attribute
@@ -478,5 +481,4 @@ class Controller extends \Piwik\Plugin\Controller
     // Default to provider user ID if no other option is available
         return $providerUserId;
     }
-
 }

@@ -384,8 +384,8 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
     private function createUsernameAttributeSetting(): SystemSetting
     {
         return $this->makeSetting('usernameAttribute', 'preferred_username', FieldConfig::TYPE_STRING, function (FieldConfig $field) {
-            $field->title = 'Username Attribute from OIDC';
-            $field->description = 'The OIDC claim to use as username (e.g., "preferred_username", "email", "id")';
+            $field->title = Piwik::translate("RebelOIDC_SettingsUsernameAttribute");
+            $field->description = Piwik::translate("RebelOIDC_SettingsUsernameAttributeHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_TEXT;
         });
     }
@@ -393,8 +393,8 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
     private function createFallbackToEmailSetting(): SystemSetting
     {
         return $this->makeSetting('fallbackToEmail', true, FieldConfig::TYPE_BOOL, function (FieldConfig $field) {
-            $field->title = 'Fallback to Email';
-            $field->description = 'Use email as username if the username attribute defined is not available';
+            $field->title = Piwik::translate("RebelOIDC_SettingsFallbackToEmail");
+            $field->description = Piwik::translate("RebelOIDC_SettingsFallbackToEmailHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_CHECKBOX;
         });
     }
