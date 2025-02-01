@@ -4,6 +4,10 @@
 
 `http(s)://<YOUR_MATOMO_URL>/index.php?module=RebelOIDC&action=callback&provider=oidc`
 
+**If I have existing users in Matomo, and adding RebelOIDC - how would I handle the existing users?**
+
+In the system settings there is a checkbox to auto link users - activating this, would keep your existing users with the user in the OIDC-provider if they have the same email.
+
 **Which providers can I use?**
 
 I tested the plugin with Auth0, GitHub and Keycloak, which work fine.
