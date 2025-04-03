@@ -1,0 +1,14 @@
+{
+    "name": "matomo-plugin-LoginOIDC",
+    "type": "library",
+    "require": {
+        "matomo/matomo": "^5.3"
+    },
+    "autoload": {
+        "psr-4": {
+            "Root\\App\\": "src/"
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
