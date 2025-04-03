@@ -16,6 +16,7 @@ use Piwik\Plugins\RebelOIDC\Auth;
 use Piwik\Container\StaticContainer;
 use Piwik\Nonce;
 use Piwik\Piwik;
+use Piwik\Plugins\SitesManager\API as SitesManagerAPI;
 use Piwik\Plugins\UsersManager\API as UsersManagerAPI;
 use Piwik\Plugins\UsersManager\Model;
 use Piwik\Request;
@@ -325,9 +326,10 @@ class Controller extends \Piwik\Plugin\Controller
                     $initialIdSite = null;
                 }
             }
+            $viewsAllSites = $settings->viewsAllSites->getValue();
 
             // set an invalid pre-hashed password, to block the user from logging in by password
-            Access::getInstance()->doAsSuperUser(function () use ($userId, $providerEmail, $initialIdSite) {
+            Access::getInstance()->doAsSuperUser(function () use ($userId, $providerEmail, $initialIdSite, $viewsAllSites) {
                 UsersManagerApi::getInstance()->addUser(
                     $userId,
                     "(disallow password login)",
@@ -335,6 +337,11 @@ class Controller extends \Piwik\Plugin\Controller
                     /* $_isPasswordHashed = */ true,
                     $initialIdSite
                 );
+
+                if($viewsAllSites) {
+                    $allSites = SitesManagerAPI::getInstance()->getSitesIdWithAdminAccess();
+                    UsersManagerAPI::getInstance()->setUserAccess($userId, 'view', $allSites);
+                }
             });
             $userModel = new Model();
             $user = $userModel->getUser($userId);
