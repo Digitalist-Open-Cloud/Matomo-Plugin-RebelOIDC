@@ -211,9 +211,7 @@ class Controller extends \Piwik\Plugin\Controller
             throw new Exception(Piwik::translate("RebelOIDC_ExceptionInvalidResponse"));
         }
 
-        $accessToken = $result->access_token;
-        $decodedToken = $this->decodeJwt($accessToken);
-        $roles = $this->extractRoles($decodedToken, $settings->clientId->getValue());
+        $roles = $this->tryToExtractRolesOfAccessToken($result, $settings);
 
         $has_correct_role = in_array($settings->allowedRole->getValue(), $roles);
         if (!empty($settings->allowedRole->getValue()) && !$has_correct_role) {
@@ -480,5 +478,22 @@ class Controller extends \Piwik\Plugin\Controller
 
     // Default to provider user ID if no other option is available
         return $providerUserId;
+    }
+
+    /**
+     * @param $result
+     * @param \Piwik\Plugins\RebelOIDC\SystemSettings $settings
+     * @return array
+     * @throws Exception
+     */
+    private function tryToExtractRolesOfAccessToken($result, \Piwik\Plugins\RebelOIDC\SystemSettings $settings): array
+    {
+        try {
+            $accessToken = $result->access_token;
+            $decodedToken = $this->decodeJwt($accessToken);
+            return $this->extractRoles($decodedToken, $settings->clientId->getValue());
+        } catch (Exception $e) {
+            return [];
+        }
     }
 }
