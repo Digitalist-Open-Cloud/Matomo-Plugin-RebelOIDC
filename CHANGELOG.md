@@ -1,5 +1,9 @@
 # Change Log
 
+## 2025-06-20
+
+- Option to retrieve user claims from the tokens instead of the user info endpoint.
+
 ## [5.1.1] - 2025-01-18
 
 ### Added

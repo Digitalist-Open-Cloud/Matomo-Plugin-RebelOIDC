@@ -16,6 +16,8 @@
     "SettingTokenUrlHelp": "ex. https://<USERNAME>.eu.auth0.com/oauth/token",
     "SettingUserInfoUrl": "URL Userinfo",
     "SettingUserInfoUrlHelp": "ex. https://<USERNAME>.eu.auth0.com/userinfo",
+    "SettingUserInfoFromToken": "Userinfo depuis le token",
+    "SettingUserInfoFromTokenHelp": "Récupérez les informations utilisateur à partir du jeton plutôt que du point de terminaison userinfo. Ceci est utile pour les fournisseurs qui ne prennent pas en charge les revendications sur le point de terminaison userinfo.",
     "SettingEndSessionUrl": "URL Logout",
     "SettingEndSessionUrlHelp": "",
     "SettingUserInfoId": "ID Userinfo",
