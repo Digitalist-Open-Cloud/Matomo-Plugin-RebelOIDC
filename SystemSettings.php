@@ -103,6 +103,13 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
      */
     public $userInfoId;
 
+    /**
+     * take the user information from the token response instead of the user info endpoint.
+     *
+     * @var Setting
+     */
+    public $userInfoFromToken;
+
      /**
      * Use the e-mail address as username.
      *
@@ -191,6 +198,7 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
         $this->authorizeUrl = $this->createAuthorizeUrlSetting();
         $this->tokenUrl = $this->createTokenUrlSetting();
         $this->userInfoUrl = $this->createUserInfoUrlSetting();
+        $this->userInfoFromToken = $this->createUserInfoFromTokenSetting();
         $this->endSessionUrl = $this->createEndSessionUrlSetting();
         $this->userInfoId = $this->createUserInfoIdSetting();
         $this->usernameAttribute = $this->createUsernameAttributeSetting();
@@ -344,6 +352,20 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
             $field->description = Piwik::translate("RebelOIDC_SettingUserInfoUrlHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_URL;
             $field->validators[] = new UrlLike();
+        });
+    }
+
+    /**
+     * Add userInfo url setting.
+     *
+     * @return SystemSetting
+     */
+    private function createUserInfoFromTokenSetting(): SystemSetting
+    {
+        return $this->makeSetting("userInfoFromToken", $default = false, FieldConfig::TYPE_BOOL, function (FieldConfig $field) {
+            $field->title = Piwik::translate("RebelOIDC_SettingUserInfoFromToken");
+            $field->description = Piwik::translate("RebelOIDC_SettingUserInfoFromTokenHelp");
+            $field->uiControl = FieldConfig::UI_CONTROL_CHECKBOX;
         });
     }
 

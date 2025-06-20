@@ -16,6 +16,8 @@
     "SettingTokenUrlHelp": "z.B. https://<USERNAME>.eu.auth0.com/oauth/token",
     "SettingUserInfoUrl": "Userinfo URL",
     "SettingUserInfoUrlHelp": "z.B. https://<USERNAME>.eu.auth0.com/userinfo",
+    "SettingUserInfoFromToken": "Userinfo aus token",
+    "SettingUserInfoFromTokenHelp": "Nehme die Benutzerinformationen aus dem Token anstelle des Userinfo-Endpunkts. Dies ist nützlich für Anbieter, die keine Ansprüche am Userinfo-Endpunkt unterstützen.",
     "SettingEndSessionUrl": "Logout URL",
     "SettingEndSessionUrlHelp": "Nach dem Logout wird der Benutzer zu dieser URL weitergeleitet, damit die Session beim Provider beendet wird. Bei Unklarheit sollte dieses Feld freigelassen werden.",
     "SettingUserInfoId": "Userinfo ID",

@@ -224,18 +224,25 @@ class Controller extends \Piwik\Plugin\Controller
         $_SESSION['loginoidc_idtoken'] = empty($result->id_token) ? null : $result->id_token;
         $_SESSION['loginoidc_auth'] = true;
 
-        $curl = curl_init();
-        curl_setopt($curl, CURLOPT_HTTPHEADER, array(
-            "Authorization: Bearer " . $result->access_token,
-            "Accept: application/json",
-            "User-Agent: RebelOIDC-Matomo-Plugin"
-        ));
-        curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($curl, CURLOPT_URL, $settings->userInfoUrl->getValue());
-        // request remote userinfo and remote user id
-        $response = curl_exec($curl);
-        curl_close($curl);
-        $result = json_decode($response);
+        if (!$settings->userInfoFromToken->getValue()) {
+            // request userinfo from remote server
+            $curl = curl_init();
+            curl_setopt($curl, CURLOPT_HTTPHEADER, array(
+                "Authorization: Bearer " . $result->access_token,
+                "Accept: application/json",
+                "User-Agent: RebelOIDC-Matomo-Plugin"
+            ));
+            curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($curl, CURLOPT_URL, $settings->userInfoUrl->getValue());
+            // request remote userinfo and remote user id
+            $response = curl_exec($curl);
+            curl_close($curl);            
+            $result = json_decode($response);
+        } else{
+            // use the current token (fields) as source for userinfo
+            $result = new \stdClass();
+            foreach ($decodedToken as $key => $value) $result->{$key} = $value;
+        }
 
         $userInfoId = $settings->userInfoId->getValue();
         $providerUserId = $result->$userInfoId;
