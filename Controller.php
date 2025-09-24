@@ -211,16 +211,18 @@ class Controller extends \Piwik\Plugin\Controller
             throw new Exception(Piwik::translate("RebelOIDC_ExceptionInvalidResponse"));
         }
 
-        $accessToken = $result->access_token;
-        $decodedToken = $this->decodeJwt($accessToken);
-        $roles = $this->extractRoles($decodedToken, $settings->clientId->getValue());
-
-        $has_correct_role = in_array($settings->allowedRole->getValue(), $roles);
-        if (!empty($settings->allowedRole->getValue()) && !$has_correct_role) {
-            $this->redirectToLogin("You do not have the correct role for access");
-            throw new Exception(Piwik::translate("LoginOIDC_ExceptionInvalidResponse"));
+        if (!empty($settings->allowedRole->getValue()) {
+            $accessToken = $result->access_token;
+            $decodedToken = $this->decodeJwt($accessToken);
+            $roles = $this->extractRoles($decodedToken, $settings->clientId->getValue());
+    
+            $has_correct_role = in_array($settings->allowedRole->getValue(), $roles);
+            if (!$has_correct_role) {
+                $this->redirectToLogin("You do not have the correct role for access");
+                throw new Exception(Piwik::translate("LoginOIDC_ExceptionInvalidResponse"));
+            }
         }
-
+    
         $_SESSION['loginoidc_idtoken'] = empty($result->id_token) ? null : $result->id_token;
         $_SESSION['loginoidc_auth'] = true;
 
