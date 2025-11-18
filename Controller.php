@@ -40,6 +40,11 @@ class Controller extends \Piwik\Plugin\Controller
     public const OIDC_PROVIDER = 'oidc';
 
     /**
+     * @var string[]
+     */
+    public const ALLOWED_PERMISSIONS = ['admin', 'write', 'view'];
+
+    /**
      * Auth implementation to login users.
      * @var Auth
      */
@@ -245,6 +250,7 @@ class Controller extends \Piwik\Plugin\Controller
         }
 
         $user = $this->getUserByRemoteId(self::OIDC_PROVIDER, $providerUserId);
+        $userOIDCPermissions = $this->extractPermissions($decodedToken);
 
 
         // auto linking
@@ -257,16 +263,19 @@ class Controller extends \Piwik\Plugin\Controller
                     $this->linkAccount($providerUserId, $providerUserId);
                 }
                 $user = $this->getUserByRemoteId(self::OIDC_PROVIDER, $providerUserId);
+                $this->assignPermissions($userOIDCPermissions, $user['login']);
             }
         }
 
         if (empty($user)) {
             if (Piwik::isUserIsAnonymous()) {
                 // user with the remote id is currently not in our database
-                $this->signupUser($settings, $providerUserId, $result->email, $result);
+                $this->signupUser($settings, $providerUserId, $result->email, $result, $userOIDCPermissions);
             } else {
                 // link current user with the remote user
                 $this->linkAccount($providerUserId);
+                $currentUserLogin = Piwik::getCurrentUserLogin();
+                $this->assignPermissions($userOIDCPermissions, $currentUserLogin);
                 $this->redirectToIndex("UsersManager", "userSecurity");
             }
         } else {
@@ -275,11 +284,14 @@ class Controller extends \Piwik\Plugin\Controller
                 if ($settings->disableSuperuser->getValue() && $this->hasTheUserSuperUserAccess($user["login"])) {
                     throw new Exception(Piwik::translate("RebelOIDC_ExceptionSuperUserOauthDisabled"));
                 } else {
+
+                    $this->assignPermissions($userOIDCPermissions, $user['login']);
                     $this->signInAndRedirect($user, $settings);
                 }
             } else {
                 if (Piwik::getCurrentUserLogin() === $user["login"]) {
                     $this->passwordVerify->setPasswordVerifiedCorrectly();
+                    $this->assignPermissions($userOIDCPermissions, $user['login']);
                     return;
                 } else {
                     throw new Exception(Piwik::translate("RebelOIDC_ExceptionAlreadyLinkedToDifferentAccount"));
@@ -294,9 +306,10 @@ class Controller extends \Piwik\Plugin\Controller
      * @param  SystemSettings  $settings
      * @param  string          $providerUserId   Remote user id
      * @param  string          $providerEmail    Users email address
+     * @param  array           $permissions      Permissions for the user as array of tuples ['permission' => <permission>, 'siteID' => <siteID>]
      * @return void
      */
-    private function signupUser($settings, string $providerUserId, string $providerEmail = null, $result): void
+    private function signupUser($settings, string $providerUserId, string $providerEmail = null, $result, array $permissions = []): void
     {
         // only sign up user if setting is enabled
         if ($settings->allowSignup->getValue()) {
@@ -339,6 +352,7 @@ class Controller extends \Piwik\Plugin\Controller
             $userModel = new Model();
             $user = $userModel->getUser($userId);
             $this->linkAccount($providerUserId, $userId);
+            $this->assignPermissions($permissions, $user['login']);
             $this->signInAndRedirect($user, $settings);
         } else {
             throw new Exception(Piwik::translate("RebelOIDC_ExceptionUserNotFoundAndSignupDisabled"));
@@ -381,6 +395,36 @@ class Controller extends \Piwik\Plugin\Controller
                 "provider" => self::OIDC_PROVIDER
             );
             return Url::getCurrentUrlWithoutQueryString() . "?" . http_build_query($params);
+        }
+    }
+
+    /**
+     * @param array $permissions
+     * @param string $login
+     * @return void
+     *
+     * Receives a set of permissions as an array of tuples ['site' => <siteID>, 'access' => <permission>].
+     * Existing permissions of the given user that are not in this array are removed, missing permissions are added.
+     */
+    private function assignPermissions(array $permissions, string $login): void
+    {
+        $userModel = new Model();
+
+        // get the existing permissions for the user from the matomo_access table
+        $existingPermissions = $userModel->getSitesAccessFromUser($login);
+
+        // add permissions that are not yet in the matomo_access table for the user
+        foreach ($permissions as $permission) {
+            if(!in_array($permission, $existingPermissions)) {
+                $userModel->addUserAccess($login, $permission['access'], [$permission['site']]);
+            }
+        }
+
+        // remove permissions that are already matomo_access table for the user but not in the given set of permissions
+        foreach ($existingPermissions as $existingPermission) {
+            if(!in_array($existingPermission, $permissions)) {
+                $userModel->removeUserAccess($login, $existingPermission['access'], [$existingPermission['site']]);
+            }
         }
     }
 
@@ -447,6 +491,32 @@ class Controller extends \Piwik\Plugin\Controller
         }
 
         return $roles;
+    }
+
+    /**
+     * Extract Permissions from a decoded JWT token.
+     *
+     * Permissions are expected to be found in the claim "matomo-permission-path"
+     * in the format /matomo/<siteID>/<permission>).
+     * Available permissions are read, write and admin.
+     *
+     * @param array $decodedToken Decoded JWT payload.
+     * @return array permissions assigned to the user as array of tuples ['site' => <siteID>, 'access' => <permission>].
+     */
+    private function extractPermissions(array $decodedToken): array
+    {
+        $result = [];
+
+        if (isset($decodedToken['matomo-permission-path'])) {
+            foreach ($decodedToken['matomo-permission-path'] as $path) {
+                $groupPathParts = array_values(array_filter(explode('/', $path)));
+                if (count($groupPathParts) === 3 && $groupPathParts[0] === 'matomo' && in_array($groupPathParts[2], self::ALLOWED_PERMISSIONS)) {
+                    $result[] = ['site' => $groupPathParts[1], 'access' => $groupPathParts['2']];
+                }
+            }
+        }
+
+        return $result;
     }
 
     /**

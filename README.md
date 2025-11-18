@@ -36,6 +36,13 @@ You can set an initial site for all new users which logs in with OIDC for the fi
 
 If you have an organisation where not all in the organisations should have access, you can choose which role should have access to Matomo. The role needs to be part of the JWT token (default behavior in many OIDC providers, otherwise you need to configure it).
 
+## Fine-grained permissions
+
+You can set fine-grained permissions for users through adding a `matomo-permission-path` claim.
+In that claim, multiple permissions can be added as a path in the format `/matomo/<siteID>/<permission>`
+Available permissions are `admin`, `write` and `view` .
+If you are using Keycloak, this claim can be added to your token through creating a group/childgroup hierarchy and adding a custom group mapper for the matomo client.
+
 ## Sync users
 
 ### Keycloak
