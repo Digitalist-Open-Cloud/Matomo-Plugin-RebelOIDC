@@ -34,6 +34,8 @@
     "SettingAllowedSignupDomainsHelp": "Wenn das Feld freigelassen wird, können sich Benutzer mit beliebiger E-Mail Adresse registrieren. Mehrere Domains können in separaten Zeilen angegeben werden.",
     "SettingAutoLinking": "Aktiviere Auto Linking",
     "SettingAutoLinkingHelp": "Aktiviert Auto Linking von Accounts, die die selbe User ID in Matomo und dem OpenID Connect Provider haben.",
+    "SettingFineGrainedPermissions": "Feingranulare Zugriffsrechte nutzen",
+    "SettingFineGrainedPermissionsHelp": "Wenn der Haken gesetzt ist, werden Zugriffsrechte anhand des \"matomo-permission-path\"-Claims aus dem Token gesetzt bzw. entfernt",
     "OpenIDConnect": "OpenID Connect",
     "OIDCIntro": "Dies erlaubt es Dir, Dich über einen externen Service bei Matomo einzuloggen.",
     "AccountLinked": "Dein Account ist zur Zeit verknüpft (Entfernte Benutzer-ID: %1$s).",

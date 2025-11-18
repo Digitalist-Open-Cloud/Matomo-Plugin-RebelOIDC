@@ -43,6 +43,8 @@ In that claim, multiple permissions can be added as a path in the format `/matom
 Available permissions are `admin`, `write` and `view` .
 If you are using Keycloak, this claim can be added to your token through creating a group/childgroup hierarchy and adding a custom group mapper for the matomo client.
 
+Fine-grained permissions can be enabled in the settings in Admin (cog wheel) -> System -> General settings -> Rebel OIDC.
+
 ## Sync users
 
 ### Keycloak

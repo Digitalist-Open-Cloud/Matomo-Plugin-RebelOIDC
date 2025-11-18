@@ -174,6 +174,13 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
     public $allowedRole;
 
     /**
+     * Use fine-grained permissions from the "matomo-permission-path" claim of the token
+     *
+     * @var Setting
+     */
+    public $fineGrainedPermissions;
+
+    /**
      * Initialize the plugin settings.
      *
      * @var Setting
@@ -202,6 +209,7 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
         $this->allowedSignupDomains = $this->createAllowedSignupDomainsSetting();
         $this->initialIdSite = $this->createInitialIdSiteSetting();
         $this->allowedRole = $this->createAllowedRoleSetting();
+        $this->fineGrainedPermissions = $this->createFineGrainedPermissionsSetting();
     }
 
     /**
@@ -525,6 +533,20 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
             $field->title = Piwik::translate("RebelOIDC_SettingAllowedRole");
             $field->description = Piwik::translate("RebelOIDC_SettingAllowedRoleHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_TEXT;
+        });
+    }
+
+    /**
+     * Add fine grained permissions setting.
+     *
+     * @return SystemSetting
+     */
+    private function createFineGrainedPermissionsSetting(): SystemSetting
+    {
+        return $this->makeSetting("fineGrainedPermissions", $default = false, FieldConfig::TYPE_BOOL, function (FieldConfig $field) {
+            $field->title = Piwik::translate("RebelOIDC_SettingFineGrainedPermissions");
+            $field->description = Piwik::translate("RebelOIDC_SettingFineGrainedPermissionsHelp");
+            $field->uiControl = FieldConfig::UI_CONTROL_CHECKBOX;
         });
     }
 }

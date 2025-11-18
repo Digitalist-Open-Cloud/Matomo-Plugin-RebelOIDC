@@ -408,6 +408,13 @@ class Controller extends \Piwik\Plugin\Controller
      */
     private function assignPermissions(array $permissions, string $login): void
     {
+        // Check if fine-grained permissions are enabled in the settings
+        $settings = new SystemSettings();
+        // if it is disabled, return so that manually-managed permissions are not removed
+        if (!$settings->fineGrainedPermissions->getValue()) {
+            return;
+        }
+
         $userModel = new Model();
 
         // get the existing permissions for the user from the matomo_access table

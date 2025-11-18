@@ -36,6 +36,8 @@
     "SettingAllowedSignupDomainsHelp": "List of email domains which should be allowed to create new accounts. Multiple domains have to be separated by line breaks. When empty, any email domain will be accepted.",
     "SettingAutoLinking": "Enable auto linking",
     "SettingAutoLinkingHelp": "Enables auto linking of accounts which have the same user id in Matomo and the OIDC provider",
+    "SettingFineGrainedPermissions": "Use fine-grained permissions",
+    "SettingFineGrainedPermissionsHelp": "If this box is ticked, site access permissions are automatically added or removed based on the values in the \"matomo-permission-path\"-claim in the token.",
     "SettingsUsernameAttribute": "Username Attribute from OIDC claim",
     "SettingsUsernameAttributeHelp": "The OIDC claim to use as username (e.g., \"preferred_username\", \"email\", \"id\")",
     "SettingsFallbackToEmail": "Fallback to Email",
