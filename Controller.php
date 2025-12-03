@@ -252,9 +252,12 @@ class Controller extends \Piwik\Plugin\Controller
         if ($settings->autoLinking->getValue()) {
             $userModel = new Model();
             $matomoUser = $userModel->getUser($providerUserId);
+            if (empty($matomoUser)) {                                                                                      
+               $matomoUser = $this->getUserByEmail($result->email);                                                        
+            } 
             if (!empty($matomoUser)) {
                 if (empty($user)) {
-                    $this->linkAccount($providerUserId, $providerUserId);
+                    $this->linkAccount($providerUserId, $matomoUser['login']);
                 }
                 $user = $this->getUserByRemoteId(self::OIDC_PROVIDER, $providerUserId);
             }
@@ -288,6 +291,19 @@ class Controller extends \Piwik\Plugin\Controller
         }
     }
 
+    /**
+     * Look up a Matomo user by email address.
+     *
+     * @param  string  $email   The email address to search for.
+     * @return array|null       The Matomo user row if found, otherwise null.
+     */
+    private function getUserByEmail(string $email)                                                                             
+    {                                                                                                                          
+        $db = \Piwik\Db::get();                                                                                                
+        $sql = "SELECT * FROM " . $db->prefixTable('user') . " WHERE email = ?";                                               
+        return $db->fetchRow($sql, [$email]);                                                                                  
+    } 
+    
     /**
      * Sign up a new user and link him with a given remote user id.
      *
