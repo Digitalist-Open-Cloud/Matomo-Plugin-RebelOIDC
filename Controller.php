@@ -256,8 +256,7 @@ class Controller extends \Piwik\Plugin\Controller
                 $matomoUser = $userModel->getUserByEmail($result->email);                                                          
             }  
             if (!empty($matomoUser)) {
-                
-                if (empty($user) && $userExists==false) {
+                if (empty($user)) {
                     $this->linkAccount($providerUserId, $matomoUser['login']);
                 }
                 $user = $this->getUserByRemoteId(self::OIDC_PROVIDER, $providerUserId);
@@ -291,7 +290,7 @@ class Controller extends \Piwik\Plugin\Controller
             }
         }
     }
-    
+
     /**
      * Sign up a new user and link him with a given remote user id.
      *
