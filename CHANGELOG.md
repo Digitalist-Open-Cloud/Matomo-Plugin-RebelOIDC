@@ -1,5 +1,11 @@
 # Change Log
 
+## [5.1.2] - 2026-02-01
+
+### Changed
+
+- If token is encrypted, it should now succeed.
+
 ## [5.1.1] - 2025-01-18
 
 ### Added

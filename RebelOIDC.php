@@ -20,7 +20,6 @@ use Piwik\Plugins\RebelOIDC\Url;
 use Piwik\Request;
 use Piwik\Session;
 use Piwik\Plugin;
-use Piwik\Notification;
 
 class RebelOIDC extends Plugin
 {

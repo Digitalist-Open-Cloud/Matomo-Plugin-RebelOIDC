@@ -76,7 +76,7 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
     public $authorizeUrl;
 
     /**
-     * The url where an access token can be retreived (json response expected).
+     * The url where an access token can be retrieved (json response expected).
      *
      * @var Setting
      */
