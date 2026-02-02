@@ -248,7 +248,7 @@ class Controller extends \Piwik\Plugin\Controller
         }
 
         $user = $this->getUserByRemoteId(self::OIDC_PROVIDER, $providerUserId);
-        $userOIDCPermissions = $this->extractPermissions($decodedToken);
+        $userOIDCPermissions = $this->extractPermissions((array)$result);
 
 
         // auto linking
