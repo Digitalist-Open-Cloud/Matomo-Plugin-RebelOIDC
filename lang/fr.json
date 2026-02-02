@@ -32,6 +32,8 @@
     "SettingRedirectUriOverrideHelp": "Dans certains cas, il peut être pratique de redéfinir l'URI de redirection qui est transmise au fournisseur OpenID Connect. Si vous êtes n'êtes pas sûr, laissez ce champ vide.",
     "SettingAllowedSignupDomains": "Limiter la création d'utilisateurs aux domaines",
     "SettingAllowedSignupDomainsHelp": "",
+    "SettingFineGrainedPermissions": "Utiliser des permissions granulaires",
+    "SettingFineGrainedPermissionsHelp": "Si cette case est cochée, les autorisations d’accès au site sont automatiquement ajoutées ou supprimées en fonction des valeurs présentes dans la revendication \"matomo-permission-path\"-claim du jeton.",
     "OpenIDConnect": "OpenID Connect",
     "OIDCIntro": "Ceci vous permet de vous connecter à Matomo en utilisant un service d'authentification externe.",
     "AccountLinked": "Votre compte est actuellement lié (Identifiant du compte utilisateur distant : %1$s).",
