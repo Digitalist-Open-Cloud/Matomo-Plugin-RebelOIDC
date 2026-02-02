@@ -1,10 +1,16 @@
 # Change Log
 
+## [5.1.3] - 2026-02-02
+
+### Added
+
+- Fine-Grained permissions for users based on claim - <https://github.com/Digitalist-Open-Cloud/Matomo-Plugin-RebelOIDC/pull/32>. Thanks to @daniellienert for this contribution.
+
 ## [5.1.2] - 2026-02-01
 
 ### Changed
 
-- If token is encrypted, it should now succeed.
+- If token is encrypted, it should now succeed. Thanks to @ fpellet for this contribution.
 
 ## [5.1.1] - 2025-01-18
 
