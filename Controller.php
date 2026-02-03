@@ -495,6 +495,11 @@ class Controller extends \Piwik\Plugin\Controller
             $roles = array_merge($roles, $decodedToken['resource_access'][$clientId]['roles']);
         }
 
+        // 3. Extract roles (if present in the token - MS Entra ID)
+        if (isset($decodedToken['roles'])) {
+            $roles = array_merge($roles, $decodedToken['roles']);
+        }
+
         return $roles;
     }
 
@@ -567,7 +572,13 @@ class Controller extends \Piwik\Plugin\Controller
     {
         try {
             $accessToken = $result->access_token;
-            $decodedToken = $this->decodeJwt($accessToken);
+            // If id_token exists, merge its decoded content with access token's decoded content
+            if (property_exists($result, 'id_token')) {
+                $idToken = $result->id_token;
+                $decodedToken = array_merge($this->decodeJwt($accessToken), $this->decodeJwt($idToken));
+            } else {
+                $decodedToken = $this->decodeJwt($accessToken);
+            }
             return $this->extractRoles($decodedToken, $settings->clientId->getValue());
         } catch (Exception $e) {
             return [];
