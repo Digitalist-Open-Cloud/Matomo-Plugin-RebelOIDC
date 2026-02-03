@@ -211,6 +211,13 @@ class Controller extends \Piwik\Plugin\Controller
         $response = curl_exec($curl);
         curl_close($curl);
         $result = json_decode($response);
+        // If id_token exists, merge its decoded content with access token's decoded content
+        if (property_exists($result, 'id_token')) {
+            $idToken = $result->id_token;
+            $decodedToken = array_merge($this->decodeJwt($accessToken), $this->decodeJwt($idToken));
+        } else {
+            $decodedToken = $this->decodeJwt($accessToken);
+        }
 
         if (empty($result) || empty($result->access_token)) {
             throw new Exception(Piwik::translate("RebelOIDC_ExceptionInvalidResponse"));
