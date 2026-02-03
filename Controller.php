@@ -264,9 +264,12 @@ class Controller extends \Piwik\Plugin\Controller
         if ($settings->autoLinking->getValue()) {
             $userModel = new Model();
             $matomoUser = $userModel->getUser($providerUserId);
+            if (empty($matomoUser) && !empty($result->email)) {                                                                    
+                $matomoUser = $userModel->getUserByEmail($result->email);                                                          
+            }  
             if (!empty($matomoUser)) {
                 if (empty($user)) {
-                    $this->linkAccount($providerUserId, $providerUserId);
+                    $this->linkAccount($providerUserId, $matomoUser['login']);
                 }
                 $user = $this->getUserByRemoteId(self::OIDC_PROVIDER, $providerUserId);
                 $this->assignPermissions($userOIDCPermissions, $user['login']);
