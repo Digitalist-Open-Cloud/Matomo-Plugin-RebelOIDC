@@ -1,5 +1,12 @@
 # Change Log
 
+## [5.1.4] - 2026-02-03
+
+### Fixed
+
+- #35 Extract Roles from MS Entra ID tokens. Thanks to @acassaro-traf for this contribution.
+- #39 Add decodedToken variable. Thanks to @acassaro-traf for this contribution.
+
 ## [5.1.3] - 2026-02-02
 
 ### Added
