@@ -175,10 +175,11 @@ class Controller extends \Piwik\Plugin\Controller
             throw new Exception(Piwik::translate("RebelOIDC_ExceptionNotConfigured"));
         }
 
-        if ($_SESSION["loginoidc_state"] !== Request::fromGet()->getStringParameter("state")) {
+        $requestState = Request::fromGet()->getStringParameter("state");
+        $sessionState = $_SESSION["loginoidc_state"] ?? null;
+
+        if (empty($sessionState) || empty($requestState) || !hash_equals((string)$sessionState, (string)$requestState)) {
             throw new Exception(Piwik::translate("RebelOIDC_ExceptionStateMismatch"));
-        } else {
-            unset($_SESSION["loginoidc_state"]);
         }
 
         if (Request::fromGet()->getStringParameter("provider") !== self::OIDC_PROVIDER) {
@@ -211,6 +212,14 @@ class Controller extends \Piwik\Plugin\Controller
         $response = curl_exec($curl);
         curl_close($curl);
         $result = json_decode($response);
+
+        if (!is_object($result) || empty($result->access_token)) {
+            throw new Exception(Piwik::translate("RebelOIDC_ExceptionInvalidResponse"));
+        }
+
+        // Consume oauth state only after we successfully received a token response.
+        unset($_SESSION["loginoidc_state"]);
+
         $accessToken = $result->access_token;
         // If id_token exists, merge its decoded content with access token's decoded content
         if (property_exists($result, 'id_token')) {
@@ -218,10 +227,6 @@ class Controller extends \Piwik\Plugin\Controller
             $decodedToken = array_merge($this->decodeJwt($accessToken), $this->decodeJwt($idToken));
         } else {
             $decodedToken = $this->decodeJwt($accessToken);
-        }
-
-        if (empty($result) || empty($result->access_token)) {
-            throw new Exception(Piwik::translate("RebelOIDC_ExceptionInvalidResponse"));
         }
 
         $roles = $this->tryToExtractRolesOfAccessToken($result, $settings);
@@ -328,6 +333,21 @@ class Controller extends \Piwik\Plugin\Controller
             }
 
             $userId = $this->determineUsername($settings, $result, $providerUserId, $providerEmail);
+            $userModel = new Model();
+
+            // If a local Matomo account already exists, link it instead of trying to create a duplicate user.
+            $existingUser = $userModel->getUser($userId);
+            if (empty($existingUser) && !empty($providerEmail)) {
+                $existingUser = $userModel->getUserByEmail($providerEmail);
+            }
+
+            if (!empty($existingUser)) {
+                $this->linkAccount($providerUserId, $existingUser['login']);
+                $this->assignPermissions($permissions, $existingUser['login']);
+                $this->signInAndRedirect($existingUser, $settings);
+                return;
+            }
+
             // verify email address domain is allowed to sign up
             if (!empty($settings->allowedSignupDomains->getValue())) {
                 $signupDomain = substr($providerEmail, strpos($providerEmail, "@") + 1);
@@ -355,7 +375,6 @@ class Controller extends \Piwik\Plugin\Controller
                     $initialIdSite
                 );
             });
-            $userModel = new Model();
             $user = $userModel->getUser($userId);
             $this->linkAccount($providerUserId, $userId);
             $this->assignPermissions($permissions, $user['login']);
