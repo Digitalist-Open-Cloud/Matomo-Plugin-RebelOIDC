@@ -205,6 +205,8 @@ class Controller extends \Piwik\Plugin\Controller
             "Accept: application/json",
             "User-Agent: RebelOIDC-Matomo-Plugin"
         ));
+        // curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, false);  // in case you want to ignore SSL
+        // curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);  // in case you want to ignore SSL
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($curl, CURLOPT_URL, $settings->tokenUrl->getValue());
         // request authorization token
@@ -241,6 +243,8 @@ class Controller extends \Piwik\Plugin\Controller
             "Accept: application/json",
             "User-Agent: RebelOIDC-Matomo-Plugin"
         ));
+        // curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, false);  // in case you want to ignore SSL
+        // curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);  // in case you want to ignore SSL
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($curl, CURLOPT_URL, $settings->userInfoUrl->getValue());
         // request remote userinfo and remote user id
