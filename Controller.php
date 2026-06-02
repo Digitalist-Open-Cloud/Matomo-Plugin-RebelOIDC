@@ -471,10 +471,19 @@ class Controller extends \Piwik\Plugin\Controller
         }
 
         // Base64-decode the payload (second part of the JWT)
-        $payload = base64_decode($parts[1]);
+        $base64 = strtr($parts[1], '-_', '+/');
+        $padded = str_pad(
+            $base64,
+            strlen($base64) + (4 - strlen($base64) % 4) % 4,
+            '='
+        );
+        $payload = base64_decode($padded, true);
+        if ($payload === false) {
+            throw new Exception('Failed to base64-decode JWT payload.')
+        }
 
         // Convert JSON payload to a PHP array
-        $decoded = json_decode($payload, true);
+        $decoded = json_decode($payload, true, 512, JSON_INVALID_UTF8_IGNORE);
         if (json_last_error() !== JSON_ERROR_NONE) {
             throw new Exception('Failed to decode JWT payload: ' . json_last_error_msg());
         }
