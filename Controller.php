@@ -205,6 +205,8 @@ class Controller extends \Piwik\Plugin\Controller
             "Accept: application/json",
             "User-Agent: RebelOIDC-Matomo-Plugin"
         ));
+        // curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, false);  // in case you want to ignore SSL
+        // curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);  // in case you want to ignore SSL
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($curl, CURLOPT_URL, $settings->tokenUrl->getValue());
         // request authorization token
@@ -241,6 +243,8 @@ class Controller extends \Piwik\Plugin\Controller
             "Accept: application/json",
             "User-Agent: RebelOIDC-Matomo-Plugin"
         ));
+        // curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, false);  // in case you want to ignore SSL
+        // curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);  // in case you want to ignore SSL
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($curl, CURLOPT_URL, $settings->userInfoUrl->getValue());
         // request remote userinfo and remote user id
@@ -471,10 +475,19 @@ class Controller extends \Piwik\Plugin\Controller
         }
 
         // Base64-decode the payload (second part of the JWT)
-        $payload = base64_decode($parts[1]);
+        $base64 = strtr($parts[1], '-_', '+/');
+        $padded = str_pad(
+            $base64,
+            strlen($base64) + (4 - strlen($base64) % 4) % 4,
+            '='
+        );
+        $payload = base64_decode($padded, true);
+        if ($payload === false) {
+            throw new Exception('Failed to base64-decode JWT payload.')
+        }
 
         // Convert JSON payload to a PHP array
-        $decoded = json_decode($payload, true);
+        $decoded = json_decode($payload, true, 512, JSON_INVALID_UTF8_IGNORE);
         if (json_last_error() !== JSON_ERROR_NONE) {
             throw new Exception('Failed to decode JWT payload: ' . json_last_error_msg());
         }
