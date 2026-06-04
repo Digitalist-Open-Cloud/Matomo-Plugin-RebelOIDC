@@ -181,6 +181,13 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
     public $fineGrainedPermissions;
 
     /**
+     * Verify TLS certificates for OIDC HTTP calls.
+     *
+     * @var Setting
+     */
+    public $verifySsl;
+
+    /**
      * Initialize the plugin settings.
      *
      * @var Setting
@@ -210,6 +217,7 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
         $this->initialIdSite = $this->createInitialIdSiteSetting();
         $this->allowedRole = $this->createAllowedRoleSetting();
         $this->fineGrainedPermissions = $this->createFineGrainedPermissionsSetting();
+        $this->verifySsl = $this->createVerifySslSetting();
     }
 
     /**
@@ -546,6 +554,20 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
         return $this->makeSetting("fineGrainedPermissions", $default = false, FieldConfig::TYPE_BOOL, function (FieldConfig $field) {
             $field->title = Piwik::translate("RebelOIDC_SettingFineGrainedPermissions");
             $field->description = Piwik::translate("RebelOIDC_SettingFineGrainedPermissionsHelp");
+            $field->uiControl = FieldConfig::UI_CONTROL_CHECKBOX;
+        });
+    }
+
+    /**
+     * Add SSL verification toggle for OIDC HTTP calls.
+     *
+     * @return SystemSetting
+     */
+    private function createVerifySslSetting(): SystemSetting
+    {
+        return $this->makeSetting("verifySsl", $default = false, FieldConfig::TYPE_BOOL, function (FieldConfig $field) {
+            $field->title = Piwik::translate("RebelOIDC_SettingVerifySsl");
+            $field->description = Piwik::translate("RebelOIDC_SettingVerifySslHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_CHECKBOX;
         });
     }
