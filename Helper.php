@@ -14,6 +14,8 @@ use Piwik\Plugins\UsersManager\Model;
 use Piwik\Common;
 use Piwik\Piwik;
 use Piwik\Db;
+use Piwik\Config;
+use Piwik\Log;
 use Piwik\Nonce;
 use Exception;
 
@@ -140,6 +142,86 @@ trait Helper
     }
 
     /**
+     * Apply SSL verification options to a cURL handle for OIDC calls.
+     *
+     * Supports [RebelOIDC] verify_ssl in config.ini.php and falls back to plugin setting verifySsl.
+     *
+     * @param resource $ch
+     * @return void
+     */
+    private function applyOidcCurlSslOptions($ch): void
+    {
+        $verifySsl = $this->shouldVerifySslForOidcCalls();
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, $verifySsl);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, $verifySsl ? 2 : 0);
+    }
+
+    /**
+     * Resolve OIDC SSL verification behavior from config and plugin settings.
+     *
+     * @return bool
+     */
+    private function shouldVerifySslForOidcCalls(): bool
+    {
+        $config = Config::getInstance();
+        if (isset($config->RebelOIDC['verify_ssl'])) {
+            return $this->toBool($config->RebelOIDC['verify_ssl']);
+        }
+
+        $settings = new SystemSettings();
+        return (bool) $settings->verifySsl->getValue();
+    }
+
+    /**
+     * Convert config values like "FALSE", "0" or "off" to boolean.
+     *
+     * @param mixed $value
+     * @return bool
+     */
+    private function toBool($value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        $normalized = strtolower(trim((string) $value));
+        return !in_array($normalized, ['', '0', 'false', 'off', 'no'], true);
+    }
+
+    /**
+     * Whether OIDC request/response warnings should be logged.
+     *
+     * Controlled by [RebelOIDC] oidc_logging in config.ini.php.
+     *
+     * @return bool
+     */
+    private function shouldLogOidcWarnings(): bool
+    {
+        $config = Config::getInstance();
+        if (!isset($config->RebelOIDC['oidc_logging'])) {
+            return false;
+        }
+
+        return $this->toBool($config->RebelOIDC['oidc_logging']);
+    }
+
+    /**
+     * Log OIDC diagnostics at warn level when enabled.
+     *
+     * @param string $message
+     * @param mixed ...$args
+     * @return void
+     */
+    private function logOidcWarn(string $message, ...$args): void
+    {
+        if (!$this->shouldLogOidcWarnings()) {
+            return;
+        }
+
+        Log::warning($message, ...$args);
+    }
+
+    /**
      * Fetch an access token from Keycloak using the client credentials.
      *
      * @param string $baseUrl Base URL of the Keycloak server.
@@ -152,9 +234,15 @@ trait Helper
     private function getAccessToken(string $baseUrl, string $realm, string $clientId, string $clientSecret): string
     {
         $tokenUrl = $baseUrl . "/realms/" . $realm . "/protocol/openid-connect/token";
+        $this->logOidcWarn(
+            'RebelOIDC::getAccessToken start. token_url=%s realm=%s',
+            $tokenUrl,
+            $realm
+        );
 
         $ch = curl_init($tokenUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        $this->applyOidcCurlSslOptions($ch);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
             'grant_type' => 'client_credentials',
@@ -166,13 +254,36 @@ trait Helper
         ]);
 
         $response = curl_exec($ch);
+        $curlErrno = curl_errno($ch);
+        $curlError = curl_error($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
-        if (curl_errno($ch)) {
+        $this->logOidcWarn(
+            'RebelOIDC::getAccessToken finished. token_url=%s http_code=%d curl_errno=%d curl_error=%s response_bytes=%d',
+            $tokenUrl,
+            (int) $httpCode,
+            (int) $curlErrno,
+            $curlError === '' ? '<none>' : $curlError,
+            is_string($response) ? strlen($response) : 0
+        );
+
+        if ($curlErrno !== 0) {
+            $this->logOidcWarn(
+                'RebelOIDC::getAccessToken curl failure details. token_url=%s curl_errno=%d curl_error=%s',
+                $tokenUrl,
+                (int) $curlErrno,
+                $curlError
+            );
             throw new Exception('Error getting access token: ' . curl_error($ch));
         }
 
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         if ($httpCode >= 400) {
+            $this->logOidcWarn(
+                'RebelOIDC::getAccessToken HTTP failure. token_url=%s http_code=%d response_bytes=%d',
+                $tokenUrl,
+                (int) $httpCode,
+                is_string($response) ? strlen($response) : 0
+            );
             throw new Exception("Failed to retrieve token. HTTP Code: $httpCode. Response: $response");
         }
 
@@ -180,8 +291,14 @@ trait Helper
         curl_close($ch);
 
         if (!isset($tokenData['access_token'])) {
+            $this->logOidcWarn(
+                'RebelOIDC::getAccessToken response missing access_token. token_url=%s',
+                $tokenUrl
+            );
             throw new Exception('Access token not found in Keycloak response');
         }
+
+        $this->logOidcWarn('RebelOIDC::getAccessToken success. token_url=%s', $tokenUrl);
 
         return $tokenData['access_token'];
     }
@@ -201,6 +318,7 @@ trait Helper
 
         $ch = curl_init($usersUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        $this->applyOidcCurlSslOptions($ch);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'Authorization: Bearer ' . $token,
             'Content-Type: application/json',
@@ -240,6 +358,7 @@ trait Helper
 
         $ch = curl_init($rolesUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        $this->applyOidcCurlSslOptions($ch);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'Authorization: Bearer ' . $token,
             'Content-Type: application/json',

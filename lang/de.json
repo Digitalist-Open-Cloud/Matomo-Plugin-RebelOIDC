@@ -36,6 +36,8 @@
     "SettingAutoLinkingHelp": "Aktiviert Auto Linking von Accounts, die die selbe User ID in Matomo und dem OpenID Connect Provider haben.",
     "SettingFineGrainedPermissions": "Feingranulare Zugriffsrechte nutzen",
     "SettingFineGrainedPermissionsHelp": "Wenn der Haken gesetzt ist, werden Zugriffsrechte anhand des \"matomo-permission-path\"-Claims aus dem Token gesetzt bzw. entfernt",
+    "SettingVerifySsl": "SSL-Zertifikate fuer OIDC-Aufrufe pruefen",
+    "SettingVerifySslHelp": "Wenn aktiviert, pruefen OIDC-HTTP-Aufrufe TLS-Zertifikate und Hostnamen. Kann auch ueber [RebelOIDC] verify_ssl in config.ini.php gesteuert werden.",
     "OpenIDConnect": "OpenID Connect",
     "OIDCIntro": "Dies erlaubt es Dir, Dich über einen externen Service bei Matomo einzuloggen.",
     "AccountLinked": "Dein Account ist zur Zeit verknüpft (Entfernte Benutzer-ID: %1$s).",
