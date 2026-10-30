@@ -63,6 +63,8 @@
     "SettingAllowedRole": "Restrict user login with specific role",
     "SettingAllowedRoleHelp": "Role to require, like matomo-user",
     "InitialIdSite": "Initial site id",
-    "InitialIdSiteHelp": "If added, the users will have view permissions on this site."
+    "InitialIdSiteHelp": "If added, the users will have view permissions on this site.",
+    "SettingsViewsAllSites": "Views all sites",
+    "SettingsViewsAllSitesHelp": "If added, the users will have view permissions on all sites."
   }
 }

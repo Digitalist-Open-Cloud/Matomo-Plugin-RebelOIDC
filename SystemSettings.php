@@ -167,6 +167,13 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
     public $initialIdSite;
 
     /**
+     * Allow views on all sites
+     *
+     * @var Setting
+     */
+    public $viewsAllSites;
+
+    /**
      * The allowedRole.
      *
      * @var Setting
@@ -208,6 +215,7 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
         $this->redirectUriOverride = $this->createRedirectUriOverrideSetting();
         $this->allowedSignupDomains = $this->createAllowedSignupDomainsSetting();
         $this->initialIdSite = $this->createInitialIdSiteSetting();
+        $this->viewsAllSites = $this->createViewsAllSitesSetting();
         $this->allowedRole = $this->createAllowedRoleSetting();
         $this->fineGrainedPermissions = $this->createFineGrainedPermissionsSetting();
     }
@@ -462,6 +470,20 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
             $field->description = Piwik::translate("RebelOIDC_InitialIdSiteHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_SINGLE_SELECT;
             $field->availableValues = $this->getSites();
+        });
+    }
+
+    /**
+     * Add all site.
+     *
+     * @return SystemSetting
+     */
+    private function createViewsAllSitesSetting(): SystemSetting
+    {
+        return $this->makeSetting('viewsAllSites', false, FieldConfig::TYPE_BOOL, function (FieldConfig $field) {
+            $field->title = Piwik::translate("RebelOIDC_SettingsViewsAllSites");
+            $field->description = Piwik::translate("RebelOIDC_SettingsViewsAllSitesHelp");
+            $field->uiControl = FieldConfig::UI_CONTROL_CHECKBOX;
         });
     }
 
