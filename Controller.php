@@ -470,8 +470,8 @@ class Controller extends \Piwik\Plugin\Controller
             throw new Exception('Invalid JWT token format.');
         }
 
-        // Base64-decode the payload (second part of the JWT)
-        $payload = base64_decode($parts[1]);
+        // Base64url-decode the payload (second part of the JWT)
+        $payload = $this->base64UrlDecode($parts[1]);
 
         // Convert JSON payload to a PHP array
         $decoded = json_decode($payload, true);

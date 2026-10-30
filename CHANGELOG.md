@@ -1,5 +1,11 @@
 # Change Log
 
+## [Unreleased]
+
+### Fixed
+
+- #47 Decode JWT payloads as base64url, so tokens whose payload encodes to "-" or "_" no longer fail with "Malformed UTF-8 characters".
+
 ## [5.1.4] - 2026-02-03
 
 ### Fixed

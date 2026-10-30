@@ -34,6 +34,27 @@ trait Helper
     }
 
     /**
+     * Decode base64url data (RFC 4648, section 5), as used in the parts of a JWT.
+     * Unlike plain base64, it uses "-" and "_" instead of "+" and "/" and omits the padding.
+     *
+     * @param  string $data
+     * @return string
+     * @throws Exception
+     */
+    private function base64UrlDecode(string $data): string
+    {
+        $base64 = strtr($data, '-_', '+/');
+        $base64 .= str_repeat('=', (4 - strlen($base64) % 4) % 4);
+
+        $decoded = base64_decode($base64, true);
+        if ($decoded === false) {
+            throw new Exception('Invalid base64url data.');
+        }
+
+        return $decoded;
+    }
+
+    /**
      * Check whether the given user has superuser access.
      * The function in Piwik\Core cannot be used because it requires an admin user being signed in.
      * It was used as a template for this function.
