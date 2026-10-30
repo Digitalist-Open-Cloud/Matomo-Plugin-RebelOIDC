@@ -34,6 +34,8 @@
     "SettingAllowedSignupDomainsHelp": "",
     "SettingFineGrainedPermissions": "Utiliser des permissions granulaires",
     "SettingFineGrainedPermissionsHelp": "Si cette case est cochée, les autorisations d’accès au site sont automatiquement ajoutées ou supprimées en fonction des valeurs présentes dans la revendication \"matomo-permission-path\"-claim du jeton.",
+    "SettingVerifySsl": "Verifier les certificats SSL pour les appels OIDC",
+    "SettingVerifySslHelp": "Si active, les appels HTTP OIDC verifient les certificats TLS et les noms d'hote. Peut aussi etre controle via [RebelOIDC] verify_ssl dans config.ini.php.",
     "OpenIDConnect": "OpenID Connect",
     "OIDCIntro": "Ceci vous permet de vous connecter à Matomo en utilisant un service d'authentification externe.",
     "AccountLinked": "Votre compte est actuellement lié (Identifiant du compte utilisateur distant : %1$s).",

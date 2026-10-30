@@ -175,10 +175,11 @@ class Controller extends \Piwik\Plugin\Controller
             throw new Exception(Piwik::translate("RebelOIDC_ExceptionNotConfigured"));
         }
 
-        if ($_SESSION["loginoidc_state"] !== Request::fromGet()->getStringParameter("state")) {
+        $requestState = Request::fromGet()->getStringParameter("state");
+        $sessionState = $_SESSION["loginoidc_state"] ?? null;
+
+        if (empty($sessionState) || empty($requestState) || !hash_equals((string)$sessionState, (string)$requestState)) {
             throw new Exception(Piwik::translate("RebelOIDC_ExceptionStateMismatch"));
-        } else {
-            unset($_SESSION["loginoidc_state"]);
         }
 
         if (Request::fromGet()->getStringParameter("provider") !== self::OIDC_PROVIDER) {
@@ -195,6 +196,15 @@ class Controller extends \Piwik\Plugin\Controller
             "state" => Request::fromGet()->getStringParameter("state")
         );
         $dataString = http_build_query($data);
+        $tokenUrl = $settings->tokenUrl->getValue();
+
+        $this->logOidcWarn(
+            'RebelOIDC::callback token request start. token_url=%s redirect_uri=%s has_code=%s state_len=%d',
+            $tokenUrl,
+            $data['redirect_uri'],
+            empty($data['code']) ? 'no' : 'yes',
+            strlen((string) $data['state'])
+        );
 
         $curl = curl_init();
         curl_setopt($curl, CURLOPT_POST, 1);
@@ -206,11 +216,55 @@ class Controller extends \Piwik\Plugin\Controller
             "User-Agent: RebelOIDC-Matomo-Plugin"
         ));
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($curl, CURLOPT_URL, $settings->tokenUrl->getValue());
+        $this->applyOidcCurlSslOptions($curl);
+        curl_setopt($curl, CURLOPT_URL, $tokenUrl);
         // request authorization token
         $response = curl_exec($curl);
+        $curlErrno = curl_errno($curl);
+        $curlError = curl_error($curl);
+        $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
         curl_close($curl);
+
+        $this->logOidcWarn(
+            'RebelOIDC::callback token request finished. token_url=%s http_code=%d curl_errno=%d curl_error=%s response_bytes=%d',
+            $tokenUrl,
+            (int) $httpCode,
+            (int) $curlErrno,
+            $curlError === '' ? '<none>' : $curlError,
+            is_string($response) ? strlen($response) : 0
+        );
+
+        if ($curlErrno !== 0) {
+            $this->logOidcWarn(
+                'RebelOIDC::callback token request curl failure details. token_url=%s curl_errno=%d curl_error=%s',
+                $tokenUrl,
+                (int) $curlErrno,
+                $curlError
+            );
+        }
+
         $result = json_decode($response);
+
+        if (!is_object($result) || empty($result->access_token)) {
+            $this->logOidcWarn(
+                'RebelOIDC::callback token response invalid. token_url=%s http_code=%d curl_errno=%d response_bytes=%d',
+                $tokenUrl,
+                (int) $httpCode,
+                (int) $curlErrno,
+                is_string($response) ? strlen($response) : 0
+            );
+            throw new Exception(Piwik::translate("RebelOIDC_ExceptionInvalidResponse"));
+        }
+
+        $this->logOidcWarn(
+            'RebelOIDC::callback token response accepted. token_url=%s has_id_token=%s',
+            $tokenUrl,
+            property_exists($result, 'id_token') ? 'yes' : 'no'
+        );
+
+        // Consume oauth state only after we successfully received a token response.
+        unset($_SESSION["loginoidc_state"]);
+
         $accessToken = $result->access_token;
         // If id_token exists, merge its decoded content with access token's decoded content
         if (property_exists($result, 'id_token')) {
@@ -220,16 +274,11 @@ class Controller extends \Piwik\Plugin\Controller
             $decodedToken = $this->decodeJwt($accessToken);
         }
 
-        if (empty($result) || empty($result->access_token)) {
-            throw new Exception(Piwik::translate("RebelOIDC_ExceptionInvalidResponse"));
-        }
-
         $roles = $this->tryToExtractRolesOfAccessToken($result, $settings);
 
         $has_correct_role = in_array($settings->allowedRole->getValue(), $roles);
         if (!empty($settings->allowedRole->getValue()) && !$has_correct_role) {
             $this->redirectToLogin("You do not have the correct role for access");
-            throw new Exception(Piwik::translate("LoginOIDC_ExceptionInvalidResponse"));
         }
 
         $_SESSION['loginoidc_idtoken'] = empty($result->id_token) ? null : $result->id_token;
@@ -242,14 +291,35 @@ class Controller extends \Piwik\Plugin\Controller
             "User-Agent: RebelOIDC-Matomo-Plugin"
         ));
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+        $this->applyOidcCurlSslOptions($curl);
         curl_setopt($curl, CURLOPT_URL, $settings->userInfoUrl->getValue());
         // request remote userinfo and remote user id
         $response = curl_exec($curl);
+        $userInfoCurlErrno = curl_errno($curl);
+        $userInfoCurlError = curl_error($curl);
+        $userInfoHttpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
         curl_close($curl);
+
+        $this->logOidcWarn(
+            'RebelOIDC::callback userinfo request finished. userinfo_url=%s http_code=%d curl_errno=%d curl_error=%s response_bytes=%d',
+            $settings->userInfoUrl->getValue(),
+            (int) $userInfoHttpCode,
+            (int) $userInfoCurlErrno,
+            $userInfoCurlError === '' ? '<none>' : $userInfoCurlError,
+            is_string($response) ? strlen($response) : 0
+        );
+
+        if ($userInfoCurlErrno !== 0 || $userInfoHttpCode >= 400) {
+            throw new Exception(Piwik::translate("RebelOIDC_ExceptionInvalidResponse"));
+        }
+
         $result = json_decode($response);
+        if (!is_object($result)) {
+            throw new Exception(Piwik::translate("RebelOIDC_ExceptionInvalidResponse"));
+        }
 
         $userInfoId = $settings->userInfoId->getValue();
-        $providerUserId = $result->$userInfoId;
+        $providerUserId = property_exists($result, $userInfoId) ? $result->$userInfoId : null;
 
         if (empty($providerUserId)) {
             throw new Exception(Piwik::translate("RebelOIDC_ExceptionInvalidResponse"));
@@ -328,6 +398,21 @@ class Controller extends \Piwik\Plugin\Controller
             }
 
             $userId = $this->determineUsername($settings, $result, $providerUserId, $providerEmail);
+            $userModel = new Model();
+
+            // If a local Matomo account already exists, link it instead of trying to create a duplicate user.
+            $existingUser = $userModel->getUser($userId);
+            if (empty($existingUser) && !empty($providerEmail)) {
+                $existingUser = $userModel->getUserByEmail($providerEmail);
+            }
+
+            if (!empty($existingUser)) {
+                $this->linkAccount($providerUserId, $existingUser['login']);
+                $this->assignPermissions($permissions, $existingUser['login']);
+                $this->signInAndRedirect($existingUser, $settings);
+                return;
+            }
+
             // verify email address domain is allowed to sign up
             if (!empty($settings->allowedSignupDomains->getValue())) {
                 $signupDomain = substr($providerEmail, strpos($providerEmail, "@") + 1);
@@ -355,7 +440,6 @@ class Controller extends \Piwik\Plugin\Controller
                     $initialIdSite
                 );
             });
-            $userModel = new Model();
             $user = $userModel->getUser($userId);
             $this->linkAccount($providerUserId, $userId);
             $this->assignPermissions($permissions, $user['login']);

@@ -38,6 +38,8 @@
     "SettingAutoLinkingHelp": "Enables auto linking of accounts which have the same user id in Matomo and the OIDC provider",
     "SettingFineGrainedPermissions": "Use fine-grained permissions",
     "SettingFineGrainedPermissionsHelp": "If this box is ticked, site access permissions are automatically added or removed based on the values in the \"matomo-permission-path\"-claim in the token.",
+    "SettingVerifySsl": "Verify SSL certificates for OIDC calls",
+    "SettingVerifySslHelp": "When enabled, OIDC HTTP calls validate TLS certificates and hostnames. Can also be controlled via [RebelOIDC] verify_ssl in config.ini.php.",
     "SettingsUsernameAttribute": "Username Attribute from OIDC claim",
     "SettingsUsernameAttributeHelp": "The OIDC claim to use as username (e.g., \"preferred_username\", \"email\", \"id\")",
     "SettingsFallbackToEmail": "Fallback to Email",
