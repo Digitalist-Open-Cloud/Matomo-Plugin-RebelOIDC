@@ -522,20 +522,30 @@ class Controller extends \Piwik\Plugin\Controller
      * @return array permissions assigned to the user as array of tuples ['site' => <siteID>, 'access' => <permission>].
      */
     private function extractPermissions(array $decodedToken): array
-    {
-        $result = [];
+	{
+		$result = [];
 
-        if (isset($decodedToken['matomo-permission-path'])) {
-            foreach ($decodedToken['matomo-permission-path'] as $path) {
-                $groupPathParts = array_values(array_filter(explode('/', $path)));
-                if (count($groupPathParts) === 3 && $groupPathParts[0] === 'matomo' && in_array($groupPathParts[2], self::ALLOWED_PERMISSIONS)) {
-                    $result[] = ['site' => $groupPathParts[1], 'access' => $groupPathParts['2']];
-                }
-            }
-        }
+		// Entra: app roles with format matomo.<siteID>.<permission>
+		// Compat: claim matomo-permission-path with format /matomo/<siteID>/<permission>
+		$claims = array_merge(
+			(array) ($decodedToken['roles'] ?? []),
+			(array) ($decodedToken['matomo-permission-path'] ?? [])
+		);
 
-        return $result;
-    }
+		foreach ($claims as $value) {
+			$parts = array_values(array_filter(preg_split('/[\/.]/', $value)));
+			if (
+				count($parts) === 3
+				&& $parts[0] === 'matomo'
+				&& ctype_digit($parts[1])
+				&& in_array($parts[2], self::ALLOWED_PERMISSIONS, true)
+			) {
+				$result[] = ['site' => (int) $parts[1], 'access' => $parts[2]];
+			}
+		}
+
+		return $result;
+	}
 
     /**
      * @param string $message
