@@ -2,6 +2,14 @@
 
 <hr />
 
+{% if loginFailedMessage %}
+    <div vue-entry="CoreHome.Notification"
+         noclear="true"
+         context="error">
+        <strong>{{ 'General_Error'|translate }}</strong>: {{ loginFailedMessage }}<br/>
+    </div>
+{% endif %}
+
 <div class="center-align">
     <form method="post" action="{{ linkTo({'module': 'RebelOIDC', 'action': 'signIn'}) }}">
         <input type="hidden" name="form_nonce" value="{{ nonce }}" />

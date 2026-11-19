@@ -124,7 +124,32 @@ trait Helper
             && !empty($settings->tokenUrl->getValue())
             && !empty($settings->userInfoUrl->getValue())
             && !empty($settings->clientId->getValue())
-            && !empty($settings->clientSecret->getValue());
+            && !empty($settings->clientSecret->getValue())
+            && self::verificationMode((string) $settings->jwksUrl->getValue(), (string) $settings->issuer->getValue()) !== null;
+    }
+
+    /**
+     * Decide how tokens are handled, based on the JWKS URL and issuer settings.
+     *
+     * - Both set: verification mode, token signatures are verified (recommended).
+     * - Both empty: legacy mode, works as before 5.2.0 without verification.
+     * - Only one set: misconfigured, the plugin is treated as not configured (fail closed).
+     *
+     * @param  string  $jwksUrl
+     * @param  string  $issuer
+     * @return bool|null true = verify, false = legacy, null = misconfigured
+     */
+    public static function verificationMode(string $jwksUrl, string $issuer): ?bool
+    {
+        $hasJwks = trim($jwksUrl) !== '';
+        $hasIssuer = trim($issuer) !== '';
+        if ($hasJwks && $hasIssuer) {
+            return true;
+        }
+        if (!$hasJwks && !$hasIssuer) {
+            return false;
+        }
+        return null;
     }
 
     /**
@@ -155,6 +180,8 @@ trait Helper
 
         $ch = curl_init($tokenUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
             'grant_type' => 'client_credentials',
@@ -168,16 +195,18 @@ trait Helper
         $response = curl_exec($ch);
 
         if (curl_errno($ch)) {
-            throw new Exception('Error getting access token: ' . curl_error($ch));
+            $error = curl_error($ch);
+            curl_close($ch);
+            throw new Exception('Error getting access token: ' . $error);
         }
 
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
         if ($httpCode >= 400) {
             throw new Exception("Failed to retrieve token. HTTP Code: $httpCode. Response: $response");
         }
 
         $tokenData = json_decode($response, true);
-        curl_close($ch);
 
         if (!isset($tokenData['access_token'])) {
             throw new Exception('Access token not found in Keycloak response');
@@ -299,5 +328,57 @@ trait Helper
         }
 
         return $users;
+    }
+
+    /**
+     * Extract permissions from a verified JWT payload.
+     *
+     * Permissions are expected in the claim "matomo-permission-path" in the
+     * format /matomo/<siteID>/<permission>. Available permissions are view, write and admin.
+     *
+     * @param array $decodedToken Verified JWT payload.
+     * @return array permissions as array of tuples ['site' => <siteID>, 'access' => <permission>].
+     */
+    private function extractPermissions(array $decodedToken): array
+    {
+        $result = [];
+        $paths = $decodedToken['matomo-permission-path'] ?? [];
+        if (!is_array($paths)) {
+            return $result;
+        }
+
+        foreach ($paths as $path) {
+            if (!is_string($path)) {
+                continue;
+            }
+            $parts = array_values(array_filter(explode('/', $path)));
+            if (
+                count($parts) === 3
+                && $parts[0] === 'matomo'
+                && preg_match('/^[1-9][0-9]*$/', $parts[1]) === 1
+                && in_array($parts[2], ['admin', 'write', 'view'], true)
+            ) {
+                $result[] = ['site' => $parts[1], 'access' => $parts[2]];
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * The remote user id from the userinfo response: must be a non-empty string or a non-negative integer (returned as string).
+     *
+     * @param array  $userinfo
+     * @param string $key      Name of the userinfo field holding the id.
+     * @return string|null     null when missing, empty, negative or of another type.
+     */
+    private function providerUserIdFrom(array $userinfo, string $key): ?string
+    {
+        $value = $key === '' ? null : ($userinfo[$key] ?? null);
+        if (is_int($value) && $value >= 0) {
+            // e.g. GitHub returns a numeric id; links are stored as strings
+            return (string) $value;
+        }
+        return is_string($value) && $value !== '' ? $value : null;
     }
 }

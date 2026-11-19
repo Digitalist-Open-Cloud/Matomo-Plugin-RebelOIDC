@@ -83,6 +83,27 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
     public $tokenUrl;
 
     /**
+     * The url of the JWKS document used to verify token signatures (optional, set together with the issuer).
+     *
+     * @var Setting
+     */
+    public $jwksUrl;
+
+    /**
+     * The expected issuer (iss claim) of tokens (optional, set together with the JWKS url).
+     *
+     * @var Setting
+     */
+    public $issuer;
+
+    /**
+     * Disable PKCE (only for identity providers that reject PKCE parameters).
+     *
+     * @var Setting
+     */
+    public $disablePkce;
+
+    /**
      * The url where the external service provides the users unique id (json response expected).
      *
      * @var Setting
@@ -180,6 +201,21 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
      */
     public $fineGrainedPermissions;
 
+    /** @var Setting Whether Matomo provisions per-site groups in Keycloak. */
+    public $provisionerEnabled;
+
+    /** @var Setting Keycloak base URL for the Admin REST API. */
+    public $keycloakAdminUrl;
+
+    /** @var Setting Keycloak realm holding the /matomo groups. */
+    public $keycloakRealm;
+
+    /** @var Setting Client id of the provisioning service account. */
+    public $provisionerClientId;
+
+    /** @var Setting Client secret of the provisioning service account. */
+    public $provisionerClientSecret;
+
     /**
      * Initialize the plugin settings.
      *
@@ -197,6 +233,9 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
         $this->authenticationName = $this->createAuthenticationNameSetting();
         $this->authorizeUrl = $this->createAuthorizeUrlSetting();
         $this->tokenUrl = $this->createTokenUrlSetting();
+        $this->jwksUrl = $this->createJwksUrlSetting();
+        $this->issuer = $this->createIssuerSetting();
+        $this->disablePkce = $this->createDisablePkceSetting();
         $this->userInfoUrl = $this->createUserInfoUrlSetting();
         $this->endSessionUrl = $this->createEndSessionUrlSetting();
         $this->userInfoId = $this->createUserInfoIdSetting();
@@ -210,6 +249,57 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
         $this->initialIdSite = $this->createInitialIdSiteSetting();
         $this->allowedRole = $this->createAllowedRoleSetting();
         $this->fineGrainedPermissions = $this->createFineGrainedPermissionsSetting();
+        $this->provisionerEnabled = $this->createProvisionerEnabledSetting();
+        $this->keycloakAdminUrl = $this->createKeycloakAdminUrlSetting();
+        $this->keycloakRealm = $this->createKeycloakRealmSetting();
+        $this->provisionerClientId = $this->createProvisionerClientIdSetting();
+        $this->provisionerClientSecret = $this->createProvisionerClientSecretSetting();
+    }
+
+    private function createProvisionerEnabledSetting(): SystemSetting
+    {
+        return $this->makeSetting("provisionerEnabled", $default = false, FieldConfig::TYPE_BOOL, function (FieldConfig $field) {
+            $field->title = Piwik::translate("RebelOIDC_SettingProvisionerEnabled");
+            $field->description = Piwik::translate("RebelOIDC_SettingProvisionerEnabledHelp");
+            $field->uiControl = FieldConfig::UI_CONTROL_CHECKBOX;
+        });
+    }
+
+    private function createKeycloakAdminUrlSetting(): SystemSetting
+    {
+        return $this->makeSetting("keycloakAdminUrl", $default = "", FieldConfig::TYPE_STRING, function (FieldConfig $field) {
+            $field->title = Piwik::translate("RebelOIDC_SettingKeycloakAdminUrl");
+            $field->description = Piwik::translate("RebelOIDC_SettingKeycloakAdminUrlHelp");
+            $field->uiControl = FieldConfig::UI_CONTROL_URL;
+            $field->validators[] = new UrlLike();
+        });
+    }
+
+    private function createKeycloakRealmSetting(): SystemSetting
+    {
+        return $this->makeSetting("keycloakRealm", $default = "", FieldConfig::TYPE_STRING, function (FieldConfig $field) {
+            $field->title = Piwik::translate("RebelOIDC_SettingKeycloakRealm");
+            $field->description = Piwik::translate("RebelOIDC_SettingKeycloakRealmHelp");
+            $field->uiControl = FieldConfig::UI_CONTROL_TEXT;
+        });
+    }
+
+    private function createProvisionerClientIdSetting(): SystemSetting
+    {
+        return $this->makeSetting("provisionerClientId", $default = "", FieldConfig::TYPE_STRING, function (FieldConfig $field) {
+            $field->title = Piwik::translate("RebelOIDC_SettingProvisionerClientId");
+            $field->description = Piwik::translate("RebelOIDC_SettingProvisionerClientIdHelp");
+            $field->uiControl = FieldConfig::UI_CONTROL_TEXT;
+        });
+    }
+
+    private function createProvisionerClientSecretSetting(): SystemSetting
+    {
+        return $this->makeSetting("provisionerClientSecret", $default = "", FieldConfig::TYPE_STRING, function (FieldConfig $field) {
+            $field->title = Piwik::translate("RebelOIDC_SettingProvisionerClientSecret");
+            $field->description = Piwik::translate("RebelOIDC_SettingProvisionerClientSecretHelp");
+            $field->uiControl = FieldConfig::UI_CONTROL_PASSWORD;
+        });
     }
 
     /**
@@ -337,6 +427,49 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
             $field->description = Piwik::translate("RebelOIDC_SettingTokenUrlHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_URL;
             $field->validators[] = new UrlLike();
+        });
+    }
+
+    /**
+     * Add JWKS url setting.
+     *
+     * @return SystemSetting
+     */
+    private function createJwksUrlSetting(): SystemSetting
+    {
+        return $this->makeSetting("jwksUrl", $default = "", FieldConfig::TYPE_STRING, function (FieldConfig $field) {
+            $field->title = Piwik::translate("RebelOIDC_SettingJwksUrl");
+            $field->description = Piwik::translate("RebelOIDC_SettingJwksUrlHelp");
+            $field->uiControl = FieldConfig::UI_CONTROL_URL;
+            $field->validators[] = new UrlLike();
+        });
+    }
+
+    /**
+     * Add issuer setting.
+     *
+     * @return SystemSetting
+     */
+    private function createIssuerSetting(): SystemSetting
+    {
+        return $this->makeSetting("issuer", $default = "", FieldConfig::TYPE_STRING, function (FieldConfig $field) {
+            $field->title = Piwik::translate("RebelOIDC_SettingIssuer");
+            $field->description = Piwik::translate("RebelOIDC_SettingIssuerHelp");
+            $field->uiControl = FieldConfig::UI_CONTROL_TEXT;
+        });
+    }
+
+    /**
+     * Add disable PKCE setting.
+     *
+     * @return SystemSetting
+     */
+    private function createDisablePkceSetting(): SystemSetting
+    {
+        return $this->makeSetting("disablePkce", $default = false, FieldConfig::TYPE_BOOL, function (FieldConfig $field) {
+            $field->title = Piwik::translate("RebelOIDC_SettingDisablePkce");
+            $field->description = Piwik::translate("RebelOIDC_SettingDisablePkceHelp");
+            $field->uiControl = FieldConfig::UI_CONTROL_CHECKBOX;
         });
     }
 

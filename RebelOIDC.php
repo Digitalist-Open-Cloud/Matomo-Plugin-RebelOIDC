@@ -10,15 +10,18 @@
 
 namespace Piwik\Plugins\RebelOIDC;
 
+use Piwik\Access;
 use Piwik\Common;
 use Piwik\Config;
 use Piwik\Db;
 use Piwik\DbHelper;
 use Piwik\FrontController;
+use Piwik\Log;
 use Piwik\Plugins\RebelOIDC\SystemSettings;
 use Piwik\Plugins\RebelOIDC\Url;
 use Piwik\Request;
 use Piwik\Session;
+use Piwik\Site;
 use Piwik\Plugin;
 
 class RebelOIDC extends Plugin
@@ -36,7 +39,10 @@ class RebelOIDC extends Plugin
             "Template.confirmPasswordContent" => "renderConfirmPasswordMod",
             "Login.logout" => "logoutMod",
             "Login.userRequiresPasswordConfirmation" => "userRequiresPasswordConfirmation",
-            'Login.recordFailedLoginAttempt'   => 'onFailedLoginRecordAttempt',
+            "SitesManager.addSite.end" => "onSiteAdded",
+            "SitesManager.deleteSite.end" => "onSiteDeleted",
+            // SitesManager posts no updateSite.end event; use the API proxy hook.
+            "API.SitesManager.updateSite.end" => "onSiteUpdated",
         );
     }
 
@@ -176,6 +182,65 @@ class RebelOIDC extends Plugin
             // require password confirmation when user has not signed in with the plugin
             $requiresPasswordConfirmation = !($_SESSION["loginoidc_auth"] ?? false);
         }
+    }
+
+    /**
+     * Create the Keycloak group for a new site.
+     *
+     * @param  int  $idSite
+     * @return void
+     */
+    public function onSiteAdded($idSite): void
+    {
+        $this->siteGroupsListener()->onSiteAdded((int) $idSite);
+    }
+
+    /**
+     * Keep the Keycloak group in step with a changed site.
+     * Hook: API.SitesManager.updateSite.end, with the site id in the call parameters.
+     *
+     * @param  mixed  $returnedValue
+     * @param  array  $extraInfo
+     * @return void
+     */
+    public function onSiteUpdated(&$returnedValue, $extraInfo = []): void
+    {
+        $idSite = (int) ($extraInfo['parameters']['idSite'] ?? 0);
+        if ($idSite <= 0) {
+            return;
+        }
+        $this->siteGroupsListener()->onSiteUpdated($idSite);
+    }
+
+    /**
+     * Remove the Keycloak group of a deleted site.
+     *
+     * @param  int  $idSite
+     * @return void
+     */
+    public function onSiteDeleted($idSite): void
+    {
+        $this->siteGroupsListener()->onSiteDeleted((int) $idSite);
+    }
+
+    private function siteGroupsListener(): SiteGroupsListener
+    {
+        return new SiteGroupsListener(
+            function () {
+                return KeycloakGroups::fromSettings(new SystemSettings());
+            },
+            function (int $idSite) {
+                return Access::doAsSuperUser(function () use ($idSite) {
+                    return [
+                        'name' => Site::getNameFor($idSite),
+                        'url' => Site::getMainUrlFor($idSite),
+                    ];
+                });
+            },
+            function (string $message) {
+                Log::warning($message);
+            }
+        );
     }
 
     /**

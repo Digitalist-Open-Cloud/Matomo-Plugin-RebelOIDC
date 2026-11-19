@@ -40,11 +40,6 @@ class Controller extends \Piwik\Plugin\Controller
     public const OIDC_PROVIDER = 'oidc';
 
     /**
-     * @var string[]
-     */
-    public const ALLOWED_PERMISSIONS = ['admin', 'write', 'view'];
-
-    /**
      * Auth implementation to login users.
      * @var Auth
      */
@@ -56,6 +51,12 @@ class Controller extends \Piwik\Plugin\Controller
      * @var SessionInitializer
      */
     protected $sessionInitializer;
+
+    /**
+     * The id token (raw, verified in verification mode), kept for the logout redirect once sign-in succeeds.
+     * @var string|null
+     */
+    private $rawIdToken = null;
 
     /**
      * Revalidate user authentication.
@@ -103,7 +104,9 @@ class Controller extends \Piwik\Plugin\Controller
     {
         $settings = new SystemSettings();
         if ($this->isPluginSetup($settings)) {
+            $failed = isset($_SESSION) && LoginFailureFlag::take($_SESSION);
             return $this->renderTemplate('loginMod', [
+                'loginFailedMessage' => $failed ? Piwik::translate('RebelOIDC_LoginFailed') : null,
                 'caption' => $settings->authenticationName->getValue(),
                 'nonce' => Nonce::getNonce(self::OIDC_NONCE),
             ]);
@@ -155,8 +158,16 @@ class Controller extends \Piwik\Plugin\Controller
             "scope" => $settings->scope->getValue(),
             "redirect_uri" => $this->getRedirectUri(),
             "state" => $_SESSION["loginoidc_state"],
-            "response_type" => "code"
+            "response_type" => "code",
         );
+        if ($settings->disablePkce->getValue()) {
+            // only for identity providers that reject PKCE parameters
+            unset($_SESSION["rebeloidc_pkce_verifier"]);
+        } else {
+            $_SESSION["rebeloidc_pkce_verifier"] = Pkce::newVerifier();
+            $params["code_challenge"] = Pkce::challenge($_SESSION["rebeloidc_pkce_verifier"]);
+            $params["code_challenge_method"] = "S256";
+        }
         $url = $settings->authorizeUrl->getValue();
         $url .= (parse_url($url, PHP_URL_QUERY) ? "&" : "?") . http_build_query($params);
         Url::redirectToUrl($url);
@@ -172,28 +183,44 @@ class Controller extends \Piwik\Plugin\Controller
     {
         $settings = new SystemSettings();
         if (!$this->isPluginSetup($settings)) {
-            throw new Exception(Piwik::translate("RebelOIDC_ExceptionNotConfigured"));
+            $this->failLogin('plugin is not configured');
         }
 
-        if ($_SESSION["loginoidc_state"] !== Request::fromGet()->getStringParameter("state")) {
-            throw new Exception(Piwik::translate("RebelOIDC_ExceptionStateMismatch"));
+        $usePkce = !$settings->disablePkce->getValue();
+        $verifyTokens = self::verificationMode((string) $settings->jwksUrl->getValue(), (string) $settings->issuer->getValue()) === true;
+
+        $pkceVerifier = $_SESSION["rebeloidc_pkce_verifier"] ?? null;
+        unset($_SESSION["rebeloidc_pkce_verifier"]);
+
+        // an IdP error redirect (e.g. ?error=access_denied) carries neither state nor code
+        $state = Request::fromGet()->getStringParameter("state", "");
+        $code = Request::fromGet()->getStringParameter("code", "");
+        if ($state === "" || $code === "") {
+            $this->failLogin('callback lacks state or code');
+        }
+
+        if (($_SESSION["loginoidc_state"] ?? null) !== $state || ($usePkce && (!is_string($pkceVerifier) || $pkceVerifier === ""))) {
+            $this->failLogin('state mismatch or missing PKCE verifier');
         } else {
             unset($_SESSION["loginoidc_state"]);
         }
 
-        if (Request::fromGet()->getStringParameter("provider") !== self::OIDC_PROVIDER) {
-            throw new Exception(Piwik::translate("RebelOIDC_ExceptionUnknownProvider"));
+        if (Request::fromGet()->getStringParameter("provider", "") !== self::OIDC_PROVIDER) {
+            $this->failLogin('unknown provider');
         }
 
         // payload for token request
         $data = array(
             "client_id" => $settings->clientId->getValue(),
             "client_secret" => $settings->clientSecret->getValue(),
-            "code" => Request::fromGet()->getStringParameter("code"),
+            "code" => $code,
             "redirect_uri" => $this->getRedirectUri(),
             "grant_type" => "authorization_code",
-            "state" => Request::fromGet()->getStringParameter("state")
+            "state" => $state
         );
+        if ($usePkce) {
+            $data["code_verifier"] = $pkceVerifier;
+        }
         $dataString = http_build_query($data);
 
         $curl = curl_init();
@@ -206,34 +233,68 @@ class Controller extends \Piwik\Plugin\Controller
             "User-Agent: RebelOIDC-Matomo-Plugin"
         ));
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, 3);
+        curl_setopt($curl, CURLOPT_TIMEOUT, 10);
         curl_setopt($curl, CURLOPT_URL, $settings->tokenUrl->getValue());
         // request authorization token
         $response = curl_exec($curl);
+        $httpCode = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+        $curlError = curl_errno($curl) !== 0 ? curl_error($curl) : '';
         curl_close($curl);
-        $result = json_decode($response);
-        $accessToken = $result->access_token;
-        // If id_token exists, merge its decoded content with access token's decoded content
-        if (property_exists($result, 'id_token')) {
-            $idToken = $result->id_token;
-            $decodedToken = array_merge($this->decodeJwt($accessToken), $this->decodeJwt($idToken));
+
+        if ($response === false || $curlError !== '' || $httpCode >= 400) {
+            $this->failLogin('token request failed (HTTP ' . $httpCode . ') ' . $curlError);
+        }
+        $result = json_decode((string) $response);
+
+        $verifiedId = [];
+        $decodedToken = [];
+        if ($verifyTokens) {
+            $verifiedAccess = [];
+            try {
+                if (!is_object($result) || empty($result->access_token) || empty($result->id_token)
+                    || !is_string($result->access_token) || !is_string($result->id_token)) {
+                    throw new InvalidTokenException('token response lacks access_token or id_token');
+                }
+                $clientId = (string) $settings->clientId->getValue();
+                $verifier = new JwtVerifier(function (bool $forceRefresh) use ($settings): array {
+                    return (new JwksProvider())->fetch((string) $settings->jwksUrl->getValue(), $forceRefresh);
+                });
+                $issuer = (string) $settings->issuer->getValue();
+                $verifiedId = $verifier->verify($result->id_token, $issuer, time());
+                JwtVerifier::assertAudience($verifiedId, $clientId);
+                // The access token is only a claims source when it is a JWS from our issuer;
+                // otherwise it is opaque (bearer for userinfo only, no claims read from it).
+                if (JwtVerifier::shouldVerifyAccessToken($result->access_token, $issuer)) {
+                    $verifiedAccess = $verifier->verify($result->access_token, $issuer, time());
+                    JwtVerifier::assertAuthorizedParty($verifiedAccess, $clientId);
+                }
+            } catch (\Exception $e) {
+                $this->failLogin($e->getMessage());
+            }
+            // only verified claims are used from here on
+            $decodedToken = array_merge($verifiedAccess, $verifiedId);
         } else {
-            $decodedToken = $this->decodeJwt($accessToken);
+            // Legacy mode (no jwksUrl/issuer configured): behaves like 5.1.x. The id token is
+            // optional and claims are decoded WITHOUT signature verification.
+            if (!is_object($result) || empty($result->access_token) || !is_string($result->access_token)) {
+                $this->failLogin('token response lacks access_token');
+            }
+            $result->id_token = isset($result->id_token) && is_string($result->id_token) ? $result->id_token : '';
+            $decodedToken = array_merge(
+                JwtVerifier::unverifiedClaims($result->access_token),
+                JwtVerifier::unverifiedClaims($result->id_token)
+            );
         }
 
-        if (empty($result) || empty($result->access_token)) {
-            throw new Exception(Piwik::translate("RebelOIDC_ExceptionInvalidResponse"));
-        }
+        $roles = $this->extractRoles($decodedToken, $settings->clientId->getValue());
 
-        $roles = $this->tryToExtractRolesOfAccessToken($result, $settings);
-
-        $has_correct_role = in_array($settings->allowedRole->getValue(), $roles);
+        $has_correct_role = in_array($settings->allowedRole->getValue(), $roles, true);
         if (!empty($settings->allowedRole->getValue()) && !$has_correct_role) {
-            $this->redirectToLogin("You do not have the correct role for access");
-            throw new Exception(Piwik::translate("LoginOIDC_ExceptionInvalidResponse"));
+            $this->failLogin('required role missing');
         }
 
-        $_SESSION['loginoidc_idtoken'] = empty($result->id_token) ? null : $result->id_token;
-        $_SESSION['loginoidc_auth'] = true;
+        $this->rawIdToken = $result->id_token !== '' ? $result->id_token : null;
 
         $curl = curl_init();
         curl_setopt($curl, CURLOPT_HTTPHEADER, array(
@@ -242,17 +303,33 @@ class Controller extends \Piwik\Plugin\Controller
             "User-Agent: RebelOIDC-Matomo-Plugin"
         ));
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, 3);
+        curl_setopt($curl, CURLOPT_TIMEOUT, 10);
         curl_setopt($curl, CURLOPT_URL, $settings->userInfoUrl->getValue());
         // request remote userinfo and remote user id
         $response = curl_exec($curl);
+        $httpCode = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+        $curlError = curl_errno($curl) !== 0 ? curl_error($curl) : '';
         curl_close($curl);
-        $result = json_decode($response);
 
-        $userInfoId = $settings->userInfoId->getValue();
-        $providerUserId = $result->$userInfoId;
+        if ($response === false || $curlError !== '' || $httpCode >= 400) {
+            $this->failLogin('userinfo request failed (HTTP ' . $httpCode . ') ' . $curlError);
+        }
+        $userinfoArray = json_decode((string) $response, true);
+        try {
+            if (!is_array($userinfoArray)) {
+                throw new InvalidTokenException('userinfo response is not a JSON object');
+            }
+            if ($verifyTokens) {
+                JwtVerifier::assertSameSubject($verifiedId, $userinfoArray);
+            }
+        } catch (\Exception $e) {
+            $this->failLogin($e->getMessage());
+        }
 
-        if (empty($providerUserId)) {
-            throw new Exception(Piwik::translate("RebelOIDC_ExceptionInvalidResponse"));
+        $providerUserId = $this->providerUserIdFrom($userinfoArray, (string) $settings->userInfoId->getValue());
+        if ($providerUserId === null) {
+            $this->failLogin('userinfo lacks a valid user id field');
         }
 
         $user = $this->getUserByRemoteId(self::OIDC_PROVIDER, $providerUserId);
@@ -276,10 +353,19 @@ class Controller extends \Piwik\Plugin\Controller
         if (empty($user)) {
             if (Piwik::isUserIsAnonymous()) {
                 // user with the remote id is currently not in our database
-                $this->signupUser($settings, $providerUserId, $result->email, $result, $userOIDCPermissions);
+                // verification mode: prefer verified claims, fall back to userinfo values only when absent there
+                // legacy mode: userinfo only (unverified token claims are never used for the identity)
+                $signupClaims = $verifyTokens ? $decodedToken : [];
+                $signupInfo = (object) array_merge($userinfoArray, $signupClaims);
+                $signupEmail = $signupClaims['email'] ?? null;
+                if (!is_string($signupEmail) || $signupEmail === '') {
+                    $signupEmail = isset($userinfoArray['email']) && is_string($userinfoArray['email']) ? $userinfoArray['email'] : null;
+                }
+                $this->signupUser($settings, $providerUserId, $signupEmail, $signupInfo, $userOIDCPermissions);
             } else {
                 // link current user with the remote user
                 $this->linkAccount($providerUserId);
+                $this->markOidcAuthenticated();
                 $currentUserLogin = Piwik::getCurrentUserLogin();
                 $this->assignPermissions($userOIDCPermissions, $currentUserLogin);
                 $this->redirectToIndex("UsersManager", "userSecurity");
@@ -288,7 +374,7 @@ class Controller extends \Piwik\Plugin\Controller
             // users identity has been successfully confirmed by the remote oidc server
             if (Piwik::isUserIsAnonymous()) {
                 if ($settings->disableSuperuser->getValue() && $this->hasTheUserSuperUserAccess($user["login"])) {
-                    throw new Exception(Piwik::translate("RebelOIDC_ExceptionSuperUserOauthDisabled"));
+                    $this->failLogin('external login disabled for superusers');
                 } else {
 
                     $this->assignPermissions($userOIDCPermissions, $user['login']);
@@ -296,11 +382,12 @@ class Controller extends \Piwik\Plugin\Controller
                 }
             } else {
                 if (Piwik::getCurrentUserLogin() === $user["login"]) {
+                    $this->markOidcAuthenticated();
                     $this->passwordVerify->setPasswordVerifiedCorrectly();
                     $this->assignPermissions($userOIDCPermissions, $user['login']);
                     return;
                 } else {
-                    throw new Exception(Piwik::translate("RebelOIDC_ExceptionAlreadyLinkedToDifferentAccount"));
+                    $this->failLogin('remote user is linked to a different account');
                 }
             }
         }
@@ -373,6 +460,7 @@ class Controller extends \Piwik\Plugin\Controller
      */
     private function signInAndRedirect(array $user, SystemSettings $settings)
     {
+        $this->markOidcAuthenticated();
         $this->auth->setLogin($user["login"]);
         $this->auth->setForceLogin(true);
         $this->sessionInitializer->initSession($this->auth);
@@ -442,47 +530,6 @@ class Controller extends \Piwik\Plugin\Controller
     }
 
     /**
-     * Validate OAuth state to mitigate CSRF attacks.
-     *
-     * @param string $state
-     * @throws Exception
-     */
-    private function validateState(string $state): void
-    {
-        if ($_SESSION['loginoidc_state'] !== $state) {
-            throw new Exception(Piwik::translate("RebelOIDC_ExceptionStateMismatch"));
-        }
-        unset($_SESSION['loginoidc_state']);
-    }
-
-    /**
-     * Decode a JWT (access token) without verification (for roles extraction).
-     *
-     * @param string $token The JWT access token.
-     * @return array Decoded token payload.
-     * @throws Exception
-     */
-    private function decodeJwt(string $token): array
-    {
-        // Explode the token into its three parts: header, payload, and signature
-        $parts = explode('.', $token);
-        if (count($parts) !== 3) {
-            throw new Exception('Invalid JWT token format.');
-        }
-
-        // Base64-decode the payload (second part of the JWT)
-        $payload = base64_decode($parts[1]);
-
-        // Convert JSON payload to a PHP array
-        $decoded = json_decode($payload, true);
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            throw new Exception('Failed to decode JWT payload: ' . json_last_error_msg());
-        }
-
-        return $decoded;
-    }
-
-    /**
      * Extract roles from a decoded JWT token.
      *
      * @param array $decodedToken Decoded JWT payload.
@@ -512,39 +559,41 @@ class Controller extends \Piwik\Plugin\Controller
     }
 
     /**
-     * Extract Permissions from a decoded JWT token.
-     *
-     * Permissions are expected to be found in the claim "matomo-permission-path"
-     * in the format /matomo/<siteID>/<permission>).
-     * Available permissions are read, write and admin.
-     *
-     * @param array $decodedToken Decoded JWT payload.
-     * @return array permissions assigned to the user as array of tuples ['site' => <siteID>, 'access' => <permission>].
+     * Mark the session as signed in/linked via OIDC. Only called on successful paths,
+     * after the tokens and the userinfo subject have been verified.
      */
-    private function extractPermissions(array $decodedToken): array
+    private function markOidcAuthenticated(): void
     {
-        $result = [];
-
-        if (isset($decodedToken['matomo-permission-path'])) {
-            foreach ($decodedToken['matomo-permission-path'] as $path) {
-                $groupPathParts = array_values(array_filter(explode('/', $path)));
-                if (count($groupPathParts) === 3 && $groupPathParts[0] === 'matomo' && in_array($groupPathParts[2], self::ALLOWED_PERMISSIONS)) {
-                    $result[] = ['site' => $groupPathParts[1], 'access' => $groupPathParts['2']];
-                }
-            }
-        }
-
-        return $result;
+        $_SESSION['loginoidc_idtoken'] = $this->rawIdToken;
+        $_SESSION['loginoidc_auth'] = true;
+        LoginFailureFlag::clear($_SESSION);
     }
 
     /**
-     * @param string $message
+     * Log the (non-secret) reason and send the user back to login with one generic message.
+     *
+     * @param string $detail
+     * @return void never returns
      */
-    private function redirectToLogin($message): void
+    private function failLogin(string $detail): void
+    {
+        if (Piwik::isUserIsAnonymous()) {
+            // keep the flags of an already signed-in user (password confirmation / link flow)
+            unset($_SESSION['loginoidc_auth'], $_SESSION['loginoidc_idtoken']);
+        }
+        \Piwik\Log::warning('RebelOIDC: login rejected: ' . $detail);
+        LoginFailureFlag::raise($_SESSION);
+        $this->redirectToLogin();
+        // fail-safe: never continue the login if the redirect returns (CLI/tests)
+        throw new Exception(Piwik::translate('RebelOIDC_LoginFailed'));
+    }
+
+    /**
+     */
+    private function redirectToLogin(): void
     {
         $url = Url::getCurrentUrlWithoutQueryString();
-        $loginUrl = $url . '?notification=' . urlencode($message);
-        Url::redirectToUrl($loginUrl);
+        Url::redirectToUrl($url);
         exit();
     }
 
@@ -568,28 +617,5 @@ class Controller extends \Piwik\Plugin\Controller
 
     // Default to provider user ID if no other option is available
         return $providerUserId;
-    }
-
-    /**
-     * @param $result
-     * @param \Piwik\Plugins\RebelOIDC\SystemSettings $settings
-     * @return array
-     * @throws Exception
-     */
-    private function tryToExtractRolesOfAccessToken($result, \Piwik\Plugins\RebelOIDC\SystemSettings $settings): array
-    {
-        try {
-            $accessToken = $result->access_token;
-            // If id_token exists, merge its decoded content with access token's decoded content
-            if (property_exists($result, 'id_token')) {
-                $idToken = $result->id_token;
-                $decodedToken = array_merge($this->decodeJwt($accessToken), $this->decodeJwt($idToken));
-            } else {
-                $decodedToken = $this->decodeJwt($accessToken);
-            }
-            return $this->extractRoles($decodedToken, $settings->clientId->getValue());
-        } catch (Exception $e) {
-            return [];
-        }
     }
 }
