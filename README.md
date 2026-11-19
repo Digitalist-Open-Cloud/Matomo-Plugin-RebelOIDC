@@ -36,6 +36,26 @@ You can set an initial site for all new users which logs in with OIDC for the fi
 
 If you have an organisation where not all in the organisations should have access, you can choose which role should have access to Matomo. The role needs to be part of the JWT token (default behavior in many OIDC providers, otherwise you need to configure it).
 
+## Token verification (recommended)
+
+By default the plugin works without verifying tokens. We recommend enabling verification by setting both of these in Admin -> System -> General settings -> Rebel OIDC:
+
+- **JWKS URL**: the provider's JSON Web Key Set, used to verify the RS256 signature of tokens.
+- **Issuer**: the expected `iss` claim, exactly as the provider reports it.
+
+When both are set, the ID token is required and verified (signature, issuer, expiry, audience), claims for roles and permissions are only read from verified tokens, and the userinfo `sub` must match the ID token. GitHub OAuth and other providers that are not OpenID Connect (no id_token, no JWKS) must leave both empty. When both are empty, the plugin behaves as in earlier versions. If only one of them is set, the plugin is treated as not configured. Nothing changes for existing installations until you set them.
+
+Examples (replace the placeholders):
+
+- Keycloak: JWKS URL `https://idp.example.com/realms/<realm>/protocol/openid-connect/certs`, issuer `https://idp.example.com/realms/<realm>`
+- Entra ID: JWKS URL `https://login.microsoftonline.com/<tenant-id>/discovery/v2.0/keys`, issuer `https://login.microsoftonline.com/<tenant-id>/v2.0`
+
+Your provider's discovery document (`/.well-known/openid-configuration`) lists the exact `jwks_uri` and `issuer` values.
+
+## PKCE
+
+The plugin uses PKCE (S256) in the authorization code flow. If your identity provider rejects the PKCE parameters (`code_challenge`, `code_verifier`), tick **Disable PKCE** in the settings.
+
 ## Fine-grained permissions
 
 You can set fine-grained permissions for users through adding a `matomo-permission-path` claim.
@@ -44,6 +64,29 @@ Available permissions are `admin`, `write` and `view` .
 If you are using Keycloak, this claim can be added to your token through creating a group/childgroup hierarchy and adding a custom group mapper for the matomo client.
 
 Fine-grained permissions can be enabled in the settings in Admin (cog wheel) -> System -> General settings -> Rebel OIDC.
+
+## Keycloak groups per site (optional)
+
+The plugin can keep Keycloak groups in step with the sites in Matomo. With the group layout
+
+```
+/matomo/<idsite>/view
+/matomo/<idsite>/write
+/matomo/<idsite>/admin
+```
+
+and a group mapper that puts the group paths in the `matomo-permission-path` claim, access per site is managed in Keycloak (see Fine-grained permissions above).
+
+Enable **Provision site groups in Keycloak** in the settings and fill in the Keycloak base URL, realm and a service-account client. The service account needs rights to view and manage groups in the realm (for example the `manage-users` and `query-groups` roles of the `realm-management` client). When enabled, groups are created, renamed and removed as sites are added, updated and deleted.
+
+To reconcile existing sites and groups, run:
+
+```sh
+./console rebeloidc:keycloak-groups-sync --dry-run
+./console rebeloidc:keycloak-groups-sync
+```
+
+`--dry-run` only reports what would change. We suggest running the command from cron to keep the groups in sync.
 
 ## Sync users
 

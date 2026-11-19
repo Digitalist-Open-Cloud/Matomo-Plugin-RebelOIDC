@@ -45,6 +45,7 @@ https://matomo.org/faq/troubleshooting/faq_25610/
   - Userinfo URL: `https://api.github.com/user`
   - Userinfo ID: `id`
   - OAuth Scopes: `<EMPTY>`
+  - JWKS URL and Issuer: leave both empty (GitHub is OAuth, not OpenID Connect, so there is no id_token to verify)
 
 - Auth0:
 
