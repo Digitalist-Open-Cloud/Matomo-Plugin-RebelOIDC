@@ -1,0 +1,27 @@
+{
+  "settings": {
+    "userInfoId": "sub",
+    "scope": "openid email"
+  },
+  "accessToken": "kPoPMRYrCEoYO6s5PVkCj9bSaHcbEcSu",
+  "idToken": {
+    "iss": "https://example.eu.auth0.com/",
+    "aud": "matomo",
+    "sub": "auth0|64f1c2f0e5d0b4a6e9a550d7",
+    "email": "zoe@example.org",
+    "email_verified": true,
+    "sid": "q1w2e3r4t5y6u7i8o9p0"
+  },
+  "userInfo": {
+    "sub": "auth0|64f1c2f0e5d0b4a6e9a550d7",
+    "email": "zoe@example.org",
+    "email_verified": true
+  },
+  "expect": {
+    "providerUser": "auth0|64f1c2f0e5d0b4a6e9a550d7",
+    "username": "zoe@example.org",
+    "email": "zoe@example.org",
+    "verifiesEmail": true,
+    "roles": []
+  }
+}

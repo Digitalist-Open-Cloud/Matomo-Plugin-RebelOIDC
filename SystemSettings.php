@@ -16,6 +16,7 @@ use Piwik\Settings\FieldConfig;
 use Piwik\Settings\Plugin\SystemSetting;
 use Piwik\Validators\NotEmpty;
 use Piwik\Validators\UrlLike;
+use Piwik\Plugins\RebelOIDC\Protocol;
 
 class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
 {
@@ -181,6 +182,20 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
     public $fineGrainedPermissions;
 
     /**
+     * The issuer the ID token has to be from.
+     *
+     * @var SystemSetting
+     */
+    public $issuer;
+
+    /**
+     * Accept an email the provider does not vouch for.
+     *
+     * @var SystemSetting
+     */
+    public $trustUnverifiedEmail;
+
+    /**
      * Initialize the plugin settings.
      *
      * @var Setting
@@ -194,11 +209,13 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
         $this->allowSignup = $this->createAllowSignupSetting();
         $this->bypassTwoFa = $this->createBypassTwoFaSetting();
         $this->autoLinking = $this->createAutoLinkingSetting();
+        $this->trustUnverifiedEmail = $this->createTrustUnverifiedEmailSetting();
         $this->authenticationName = $this->createAuthenticationNameSetting();
         $this->authorizeUrl = $this->createAuthorizeUrlSetting();
         $this->tokenUrl = $this->createTokenUrlSetting();
         $this->userInfoUrl = $this->createUserInfoUrlSetting();
         $this->endSessionUrl = $this->createEndSessionUrlSetting();
+        $this->issuer = $this->createIssuerSetting();
         $this->userInfoId = $this->createUserInfoIdSetting();
         $this->usernameAttribute = $this->createUsernameAttributeSetting();
         $this->fallbackToEmail = $this->createFallbackToEmailSetting();
@@ -210,6 +227,24 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
         $this->initialIdSite = $this->createInitialIdSiteSetting();
         $this->allowedRole = $this->createAllowedRoleSetting();
         $this->fineGrainedPermissions = $this->createFineGrainedPermissionsSetting();
+    }
+
+    private function createIssuerSetting(): SystemSetting
+    {
+        return $this->makeSetting("issuer", $default = "", FieldConfig::TYPE_STRING, function (FieldConfig $field) {
+            $field->title = Piwik::translate("RebelOIDC_SettingIssuer");
+            $field->description = Piwik::translate("RebelOIDC_SettingIssuerHelp");
+            $field->uiControl = FieldConfig::UI_CONTROL_TEXT;
+        });
+    }
+
+    private function createTrustUnverifiedEmailSetting(): SystemSetting
+    {
+        return $this->makeSetting("trustUnverifiedEmail", $default = false, FieldConfig::TYPE_BOOL, function (FieldConfig $field) {
+            $field->title = Piwik::translate("RebelOIDC_SettingTrustUnverifiedEmail");
+            $field->description = Piwik::translate("RebelOIDC_SettingTrustUnverifiedEmailHelp");
+            $field->uiControl = FieldConfig::UI_CONTROL_CHECKBOX;
+        });
     }
 
     /**
@@ -322,6 +357,11 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
             $field->description = Piwik::translate("RebelOIDC_SettingAuthorizeUrlHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_URL;
             $field->validators[] = new UrlLike();
+            $field->validate = function ($value) {
+                if (!empty($value)) {
+                    Protocol::checkSecureUrl($value);
+                }
+            };
         });
     }
 
@@ -337,6 +377,11 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
             $field->description = Piwik::translate("RebelOIDC_SettingTokenUrlHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_URL;
             $field->validators[] = new UrlLike();
+            $field->validate = function ($value) {
+                if (!empty($value)) {
+                    Protocol::checkSecureUrl($value);
+                }
+            };
         });
     }
 
@@ -352,6 +397,11 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
             $field->description = Piwik::translate("RebelOIDC_SettingUserInfoUrlHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_URL;
             $field->validators[] = new UrlLike();
+            $field->validate = function ($value) {
+                if (!empty($value)) {
+                    Protocol::checkSecureUrl($value);
+                }
+            };
         });
     }
 

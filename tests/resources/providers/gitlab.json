@@ -1,0 +1,39 @@
+{
+  "settings": {
+    "userInfoId": "sub",
+    "scope": "openid email"
+  },
+  "accessToken": "3f2c7a9b1d4e6f8091a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708",
+  "idToken": {
+    "iss": "https://gitlab.example",
+    "sub": "42",
+    "aud": "matomo",
+    "auth_time": 1700000000,
+    "sub_legacy": "2f1c2f0e5d0b4a6e9a550d7f0c1b2a3e",
+    "email": "zoe@example.org",
+    "email_verified": true,
+    "groups_direct": [
+      "analytics"
+    ]
+  },
+  "userInfo": {
+    "sub": "42",
+    "sub_legacy": "2f1c2f0e5d0b4a6e9a550d7f0c1b2a3e",
+    "name": "Zoë Åström",
+    "nickname": "zoe",
+    "preferred_username": "zoe",
+    "email": "zoe@example.org",
+    "email_verified": true,
+    "profile": "https://gitlab.example/zoe",
+    "groups": [
+      "analytics"
+    ]
+  },
+  "expect": {
+    "providerUser": "42",
+    "username": "zoe",
+    "email": "zoe@example.org",
+    "verifiesEmail": true,
+    "roles": []
+  }
+}

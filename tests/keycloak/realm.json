@@ -1,0 +1,149 @@
+{
+  "realm": "matomo",
+  "enabled": true,
+  "sslRequired": "none",
+  "roles": {
+    "realm": [
+      {
+        "name": "matomo-user"
+      }
+    ]
+  },
+  "groups": [
+    {
+      "name": "matomo",
+      "subGroups": [
+        {
+          "name": "1",
+          "subGroups": [
+            {
+              "name": "view"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "matomo",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "matomo-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://matomo.test/*"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "defaultClientScopes": [
+        "basic",
+        "profile",
+        "email",
+        "roles",
+        "acr"
+      ],
+      "protocolMappers": [
+        {
+          "name": "matomo-permission-path",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "claim.name": "matomo-permission-path",
+            "full.path": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "matomo-sync",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "matomo-sync-secret",
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "defaultClientScopes": [
+        "basic",
+        "roles",
+        "kc-admin-api"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "anna",
+      "enabled": true,
+      "email": "anna@example.org",
+      "emailVerified": true,
+      "firstName": "Anna",
+      "lastName": "Example",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "anna-password",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "matomo-user"
+      ],
+      "groups": []
+    },
+    {
+      "username": "karin",
+      "enabled": true,
+      "email": "karin@example.org",
+      "emailVerified": true,
+      "firstName": "Karin",
+      "lastName": "Example",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "karin-password",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "matomo-user"
+      ],
+      "groups": [
+        "/matomo/1/view"
+      ]
+    },
+    {
+      "username": "bertil",
+      "enabled": true,
+      "email": "bertil@example.org",
+      "emailVerified": false,
+      "firstName": "Bertil",
+      "lastName": "Example",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "bertil-password",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [],
+      "groups": []
+    },
+    {
+      "username": "service-account-matomo-sync",
+      "enabled": true,
+      "serviceAccountClientId": "matomo-sync",
+      "clientRoles": {
+        "realm-management": [
+          "view-users",
+          "query-users"
+        ]
+      }
+    }
+  ]
+}

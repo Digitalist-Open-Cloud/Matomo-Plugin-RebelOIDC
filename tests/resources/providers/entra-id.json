@@ -1,0 +1,46 @@
+{
+  "settings": {
+    "userInfoId": "sub",
+    "scope": "openid email"
+  },
+  "accessToken": {
+    "aud": "00000003-0000-0000-c000-000000000000",
+    "iss": "https://sts.windows.net/9188040d-6c67-4c5b-b112-36a304b66dad/",
+    "app_displayname": "Matomo",
+    "name": "Zoë Åström",
+    "oid": "0f0e0d0c-0b0a-4908-8706-050403020100",
+    "scp": "email openid profile User.Read",
+    "tid": "9188040d-6c67-4c5b-b112-36a304b66dad",
+    "upn": "zoe@example.org",
+    "ver": "1.0"
+  },
+  "idToken": {
+    "aud": "matomo",
+    "iss": "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+    "sub": "AAAAAAAAAAAAAAAAAAAAAIkzqFVrSaSaFHy782bbtaQ",
+    "oid": "0f0e0d0c-0b0a-4908-8706-050403020100",
+    "tid": "9188040d-6c67-4c5b-b112-36a304b66dad",
+    "email": "zoe@example.org",
+    "roles": [
+      "Matomo.User"
+    ],
+    "ver": "2.0"
+  },
+  "userInfo": {
+    "sub": "AAAAAAAAAAAAAAAAAAAAAIkzqFVrSaSaFHy782bbtaQ",
+    "name": "Zoë Åström",
+    "given_name": "Zoë",
+    "family_name": "Åström",
+    "email": "zoe@example.org",
+    "picture": "https://graph.microsoft.com/v1.0/me/photo/$value"
+  },
+  "expect": {
+    "providerUser": "AAAAAAAAAAAAAAAAAAAAAIkzqFVrSaSaFHy782bbtaQ",
+    "username": "zoe@example.org",
+    "email": "zoe@example.org",
+    "verifiesEmail": false,
+    "roles": [
+      "Matomo.User"
+    ]
+  }
+}

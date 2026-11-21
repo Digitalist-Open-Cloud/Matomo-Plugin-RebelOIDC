@@ -18,7 +18,20 @@ jobs:
         with:
           lfs: true
           persist-credentials: false
+      - name: Start Keycloak
+        run: |
+          docker run -d --name keycloak -p 8080:8080 \
+            -v "$PWD/tests/keycloak:/opt/keycloak/data/import:ro" \
+            quay.io/keycloak/keycloak:26.8 start-dev --import-realm
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:8080/realms/matomo/.well-known/openid-configuration > /dev/null && exit 0
+            sleep 3
+          done
+          docker logs keycloak
+          exit 1
       - name: Run tests
+        env:
+          KEYCLOAK_URL: http://localhost:8080
         uses: Digitalist-Open-Cloud/Matomo-github-action-tests@main
         with:
           plugin-name: 'RebelOIDC'

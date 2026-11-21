@@ -15,6 +15,7 @@ use Piwik\Access;
 use Piwik\Plugins\RebelOIDC\Auth;
 use Piwik\Container\StaticContainer;
 use Piwik\Nonce;
+use Piwik\Plugins\Login\PasswordVerifier;
 use Piwik\Piwik;
 use Piwik\Plugins\UsersManager\API as UsersManagerAPI;
 use Piwik\Plugins\UsersManager\Model;
@@ -24,6 +25,7 @@ use Piwik\Session\SessionInitializer;
 use Piwik\Url;
 use Piwik\Plugins\RebelOIDC\SystemSettings;
 use Piwik\Plugins\RebelOIDC\Helper;
+use Piwik\Plugins\RebelOIDC\Protocol;
 
 class Controller extends \Piwik\Plugin\Controller
 {
@@ -70,13 +72,13 @@ class Controller extends \Piwik\Plugin\Controller
      * @param Auth                $auth
      * @param SessionInitializer  $sessionInitializer
      */
-    public function __construct(Auth $auth = null, SessionInitializer $sessionInitializer = null)
+    public function __construct(?Auth $auth = null, ?SessionInitializer $sessionInitializer = null)
     {
         parent::__construct();
 
         $this->auth = $auth ?: new Auth();
         $this->sessionInitializer = $sessionInitializer ?: new SessionInitializer();
-        $this->passwordVerify = StaticContainer::get("Piwik\Plugins\Login\PasswordVerifier");
+        $this->passwordVerify = StaticContainer::get(PasswordVerifier::class);
     }
 
     /**
@@ -131,8 +133,12 @@ class Controller extends \Piwik\Plugin\Controller
     {
         $settings = new SystemSettings();
 
+        // A user that is logged in and has no linked account is about to link one.
+        $isLinking = !Piwik::isUserIsAnonymous() && empty($this->getProviderUser(self::OIDC_PROVIDER));
+
         $allowedMethods = array("POST");
-        if (!$settings->disableDirectLoginUrl->getValue()) {
+        // Confirming the password brings the user back here with a GET request.
+        if (!$settings->disableDirectLoginUrl->getValue() || ($isLinking && $this->passwordVerify->hasBeenVerified())) {
             array_push($allowedMethods, "GET");
         }
         if (!in_array($_SERVER["REQUEST_METHOD"], $allowedMethods)) {
@@ -148,16 +154,27 @@ class Controller extends \Piwik\Plugin\Controller
             throw new Exception(Piwik::translate("RebelOIDC_ExceptionNotConfigured"));
         }
 
+        if ($isLinking && !$this->passwordVerify->requirePasswordVerifiedRecently(['module' => 'RebelOIDC', 'action' => 'signIn'])) {
+            return;
+        }
+
+        $url = $settings->authorizeUrl->getValue();
+        Protocol::checkSecureUrl($url);
+
         $_SESSION["loginoidc_state"] = $this->generateKey(32);
+        $_SESSION["loginoidc_nonce"] = $this->generateKey(32);
+        $_SESSION["loginoidc_verifier"] = $this->generateKey(64);
 
         $params = array(
             "client_id" => $settings->clientId->getValue(),
             "scope" => $settings->scope->getValue(),
             "redirect_uri" => $this->getRedirectUri(),
             "state" => $_SESSION["loginoidc_state"],
+            "nonce" => $_SESSION["loginoidc_nonce"],
+            "code_challenge" => Protocol::getPkceChallenge($_SESSION["loginoidc_verifier"]),
+            "code_challenge_method" => "S256",
             "response_type" => "code"
         );
-        $url = $settings->authorizeUrl->getValue();
         $url .= (parse_url($url, PHP_URL_QUERY) ? "&" : "?") . http_build_query($params);
         Url::redirectToUrl($url);
     }
@@ -175,25 +192,144 @@ class Controller extends \Piwik\Plugin\Controller
             throw new Exception(Piwik::translate("RebelOIDC_ExceptionNotConfigured"));
         }
 
-        if ($_SESSION["loginoidc_state"] !== Request::fromGet()->getStringParameter("state")) {
+        $state = $_SESSION["loginoidc_state"] ?? null;
+        $nonce = $_SESSION["loginoidc_nonce"] ?? '';
+        $verifier = $_SESSION["loginoidc_verifier"] ?? '';
+        unset($_SESSION["loginoidc_state"], $_SESSION["loginoidc_nonce"], $_SESSION["loginoidc_verifier"]);
+
+        if (empty($state) || !hash_equals($state, Request::fromGet()->getStringParameter("state", ""))) {
             throw new Exception(Piwik::translate("RebelOIDC_ExceptionStateMismatch"));
-        } else {
-            unset($_SESSION["loginoidc_state"]);
         }
 
         if (Request::fromGet()->getStringParameter("provider") !== self::OIDC_PROVIDER) {
             throw new Exception(Piwik::translate("RebelOIDC_ExceptionUnknownProvider"));
         }
 
-        // payload for token request
-        $data = array(
+        Protocol::checkSecureUrl($settings->tokenUrl->getValue());
+        Protocol::checkSecureUrl($settings->userInfoUrl->getValue());
+
+        $tokens = $this->requestTokens(array(
             "client_id" => $settings->clientId->getValue(),
             "client_secret" => $settings->clientSecret->getValue(),
             "code" => Request::fromGet()->getStringParameter("code"),
+            "code_verifier" => $verifier,
             "redirect_uri" => $this->getRedirectUri(),
             "grant_type" => "authorization_code",
-            "state" => Request::fromGet()->getStringParameter("state")
-        );
+            "state" => $state
+        ), $settings->tokenUrl->getValue());
+
+        if (empty($tokens) || empty($tokens->access_token) || !is_string($tokens->access_token)) {
+            throw new Exception(Piwik::translate("RebelOIDC_ExceptionInvalidResponse"));
+        }
+
+        $idToken = empty($tokens->id_token) || !is_string($tokens->id_token) ? null : $tokens->id_token;
+        $idClaims = Protocol::decodeJwt($idToken);
+        if ($idClaims !== null) {
+            Protocol::checkIdToken($idClaims, $settings->clientId->getValue(), trim((string) $settings->issuer->getValue()), $nonce);
+        }
+
+        // Roles and permissions are in the access token at some providers and in the ID token at others.
+        $decodedToken = array_merge(Protocol::decodeJwt($tokens->access_token) ?? [], $idClaims ?? []);
+
+        $roles = $this->extractRoles($decodedToken, $settings->clientId->getValue());
+
+        $has_correct_role = in_array($settings->allowedRole->getValue(), $roles);
+        if (!empty($settings->allowedRole->getValue()) && !$has_correct_role) {
+            $this->redirectToLogin("You do not have the correct role for access");
+        }
+
+        $result = $this->requestUserInfo($tokens->access_token, $settings->userInfoUrl->getValue());
+
+        $userInfoId = $settings->userInfoId->getValue();
+        $providerUserId = $result->$userInfoId ?? null;
+
+        if (empty($providerUserId) || !is_scalar($providerUserId)) {
+            throw new Exception(Piwik::translate("RebelOIDC_ExceptionInvalidResponse"));
+        }
+        $providerUserId = (string) $providerUserId;
+
+        // The user info has to be about the user the ID token was issued for.
+        if (isset($idClaims['sub'], $result->sub) && $idClaims['sub'] !== $result->sub) {
+            throw new Exception(Piwik::translate("RebelOIDC_ExceptionInvalidResponse"));
+        }
+
+        $providerEmail = $result->email ?? $idClaims['email'] ?? null;
+        $isEmailTrusted = $settings->trustUnverifiedEmail->getValue()
+            || Protocol::isEmailVerified($result->email_verified ?? $idClaims['email_verified'] ?? null);
+
+        $user = $this->getUserByRemoteId(self::OIDC_PROVIDER, $providerUserId);
+        $userOIDCPermissions = $this->extractPermissions($decodedToken);
+
+        // auto linking
+        // A user that is logged in links by hand, after confirming the password.
+        if (empty($user) && $settings->autoLinking->getValue() && Piwik::isUserIsAnonymous()) {
+            $userModel = new Model();
+            $matomoUser = $userModel->getUser($providerUserId);
+            if (!empty($matomoUser) && Protocol::canLinkByEmail($matomoUser, $providerEmail, $isEmailTrusted)) {
+                $this->linkAccount($providerUserId, $matomoUser['login']);
+                $user = $matomoUser;
+            }
+        }
+
+        if (empty($user)) {
+            if (Piwik::isUserIsAnonymous()) {
+                // user with the remote id is currently not in our database
+                $this->signupUser($settings, $providerUserId, $providerEmail, $result, $userOIDCPermissions, $isEmailTrusted, $idToken);
+            } else {
+                // link current user with the remote user
+                if (!$this->passwordVerify->hasBeenVerified()) {
+                    throw new Exception(Piwik::translate("RebelOIDC_ExceptionPasswordConfirmationRequired"));
+                }
+                $this->linkAccount($providerUserId);
+                $currentUserLogin = Piwik::getCurrentUserLogin();
+                $this->assignPermissions($userOIDCPermissions, $currentUserLogin);
+                $this->redirectToIndex("UsersManager", "userSecurity");
+            }
+        } else {
+            // users identity has been successfully confirmed by the remote oidc server
+            if (Piwik::isUserIsAnonymous()) {
+                if ($settings->disableSuperuser->getValue() && $this->hasTheUserSuperUserAccess($user["login"])) {
+                    throw new Exception(Piwik::translate("RebelOIDC_ExceptionSuperUserOauthDisabled"));
+                } else {
+                    $this->assignPermissions($userOIDCPermissions, $user['login']);
+                    $this->signInAndRedirect($user, $settings, $idToken);
+                }
+            } else {
+                if (Piwik::getCurrentUserLogin() === $user["login"]) {
+                    $this->markSessionAsSignedIn($idToken);
+                    $this->passwordVerify->setPasswordVerifiedCorrectly();
+                    $this->assignPermissions($userOIDCPermissions, $user['login']);
+                    return;
+                } else {
+                    throw new Exception(Piwik::translate("RebelOIDC_ExceptionAlreadyLinkedToDifferentAccount"));
+                }
+            }
+        }
+    }
+
+    /**
+     * Remembers that the user of this session was identified by the provider. Only to be called
+     * once the provider's account is known to belong to that user.
+     */
+    private function markSessionAsSignedIn(
+        #[\SensitiveParameter]
+        ?string $idToken
+    ): void {
+        $_SESSION['loginoidc_idtoken'] = $idToken;
+        $_SESSION['loginoidc_auth'] = true;
+    }
+
+    /**
+     * Exchanges the code of the callback for the tokens.
+     *
+     * @param array<string, string> $data
+     * @return object|null the response, or null when it is not JSON
+     */
+    protected function requestTokens(
+        #[\SensitiveParameter]
+        array $data,
+        string $tokenUrl
+    ) {
         $dataString = http_build_query($data);
 
         $curl = curl_init();
@@ -206,104 +342,37 @@ class Controller extends \Piwik\Plugin\Controller
             "User-Agent: RebelOIDC-Matomo-Plugin"
         ));
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($curl, CURLOPT_URL, $settings->tokenUrl->getValue());
-        // request authorization token
+        curl_setopt($curl, CURLOPT_URL, $tokenUrl);
         $response = curl_exec($curl);
         curl_close($curl);
-        $result = json_decode($response);
-        $accessToken = $result->access_token;
-        // If id_token exists, merge its decoded content with access token's decoded content
-        if (property_exists($result, 'id_token')) {
-            $idToken = $result->id_token;
-            $decodedToken = array_merge($this->decodeJwt($accessToken), $this->decodeJwt($idToken));
-        } else {
-            $decodedToken = $this->decodeJwt($accessToken);
-        }
 
-        if (empty($result) || empty($result->access_token)) {
-            throw new Exception(Piwik::translate("RebelOIDC_ExceptionInvalidResponse"));
-        }
+        $result = json_decode((string) $response);
 
-        $roles = $this->tryToExtractRolesOfAccessToken($result, $settings);
+        return is_object($result) ? $result : null;
+    }
 
-        $has_correct_role = in_array($settings->allowedRole->getValue(), $roles);
-        if (!empty($settings->allowedRole->getValue()) && !$has_correct_role) {
-            $this->redirectToLogin("You do not have the correct role for access");
-            throw new Exception(Piwik::translate("LoginOIDC_ExceptionInvalidResponse"));
-        }
-
-        $_SESSION['loginoidc_idtoken'] = empty($result->id_token) ? null : $result->id_token;
-        $_SESSION['loginoidc_auth'] = true;
-
+    /**
+     * @return object|null the user info of the provider, or null when the response is not JSON
+     */
+    protected function requestUserInfo(
+        #[\SensitiveParameter]
+        string $accessToken,
+        string $userInfoUrl
+    ) {
         $curl = curl_init();
         curl_setopt($curl, CURLOPT_HTTPHEADER, array(
-            "Authorization: Bearer " . $result->access_token,
+            "Authorization: Bearer " . $accessToken,
             "Accept: application/json",
             "User-Agent: RebelOIDC-Matomo-Plugin"
         ));
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($curl, CURLOPT_URL, $settings->userInfoUrl->getValue());
-        // request remote userinfo and remote user id
+        curl_setopt($curl, CURLOPT_URL, $userInfoUrl);
         $response = curl_exec($curl);
         curl_close($curl);
-        $result = json_decode($response);
 
-        $userInfoId = $settings->userInfoId->getValue();
-        $providerUserId = $result->$userInfoId;
+        $result = json_decode((string) $response);
 
-        if (empty($providerUserId)) {
-            throw new Exception(Piwik::translate("RebelOIDC_ExceptionInvalidResponse"));
-        }
-
-        $user = $this->getUserByRemoteId(self::OIDC_PROVIDER, $providerUserId);
-        $userOIDCPermissions = $this->extractPermissions($decodedToken);
-
-
-        // auto linking
-        // if setting is activated, the oidc account is automatically linked, if the user ID of the OpenID Connect Provider is equal to the internal matomo user ID
-        if ($settings->autoLinking->getValue()) {
-            $userModel = new Model();
-            $matomoUser = $userModel->getUser($providerUserId);
-            if (!empty($matomoUser)) {
-                if (empty($user)) {
-                    $this->linkAccount($providerUserId, $providerUserId);
-                }
-                $user = $this->getUserByRemoteId(self::OIDC_PROVIDER, $providerUserId);
-                $this->assignPermissions($userOIDCPermissions, $user['login']);
-            }
-        }
-
-        if (empty($user)) {
-            if (Piwik::isUserIsAnonymous()) {
-                // user with the remote id is currently not in our database
-                $this->signupUser($settings, $providerUserId, $result->email, $result, $userOIDCPermissions);
-            } else {
-                // link current user with the remote user
-                $this->linkAccount($providerUserId);
-                $currentUserLogin = Piwik::getCurrentUserLogin();
-                $this->assignPermissions($userOIDCPermissions, $currentUserLogin);
-                $this->redirectToIndex("UsersManager", "userSecurity");
-            }
-        } else {
-            // users identity has been successfully confirmed by the remote oidc server
-            if (Piwik::isUserIsAnonymous()) {
-                if ($settings->disableSuperuser->getValue() && $this->hasTheUserSuperUserAccess($user["login"])) {
-                    throw new Exception(Piwik::translate("RebelOIDC_ExceptionSuperUserOauthDisabled"));
-                } else {
-
-                    $this->assignPermissions($userOIDCPermissions, $user['login']);
-                    $this->signInAndRedirect($user, $settings);
-                }
-            } else {
-                if (Piwik::getCurrentUserLogin() === $user["login"]) {
-                    $this->passwordVerify->setPasswordVerifiedCorrectly();
-                    $this->assignPermissions($userOIDCPermissions, $user['login']);
-                    return;
-                } else {
-                    throw new Exception(Piwik::translate("RebelOIDC_ExceptionAlreadyLinkedToDifferentAccount"));
-                }
-            }
-        }
+        return is_object($result) ? $result : null;
     }
 
     /**
@@ -313,10 +382,19 @@ class Controller extends \Piwik\Plugin\Controller
      * @param  string          $providerUserId   Remote user id
      * @param  string          $providerEmail    Users email address
      * @param  array           $permissions      Permissions for the user as array of tuples ['permission' => <permission>, 'siteID' => <siteID>]
+     * @param  bool            $isEmailTrusted   Whether the email is known to belong to the user
      * @return void
      */
-    private function signupUser($settings, string $providerUserId, string $providerEmail = null, $result, array $permissions = []): void
-    {
+    private function signupUser(
+        $settings,
+        string $providerUserId,
+        ?string $providerEmail,
+        $result,
+        array $permissions,
+        bool $isEmailTrusted,
+        #[\SensitiveParameter]
+        ?string $idToken
+    ): void {
         // only sign up user if setting is enabled
         if ($settings->allowSignup->getValue()) {
             // verify response contains email address
@@ -325,6 +403,9 @@ class Controller extends \Piwik\Plugin\Controller
             }
             if (empty($providerUserId)) {
                 throw new Exception(Piwik::translate("RebelOIDC_ExceptionUserNotFoundAndNoUserId"));
+            }
+            if (!$isEmailTrusted) {
+                throw new Exception(Piwik::translate("RebelOIDC_ExceptionEmailNotVerified"));
             }
 
             $userId = $this->determineUsername($settings, $result, $providerUserId, $providerEmail);
@@ -359,7 +440,7 @@ class Controller extends \Piwik\Plugin\Controller
             $user = $userModel->getUser($userId);
             $this->linkAccount($providerUserId, $userId);
             $this->assignPermissions($permissions, $user['login']);
-            $this->signInAndRedirect($user, $settings);
+            $this->signInAndRedirect($user, $settings, $idToken);
         } else {
             throw new Exception(Piwik::translate("RebelOIDC_ExceptionUserNotFoundAndSignupDisabled"));
         }
@@ -371,11 +452,16 @@ class Controller extends \Piwik\Plugin\Controller
      * @param  array  $user
      * @return void
      */
-    private function signInAndRedirect(array $user, SystemSettings $settings)
-    {
+    private function signInAndRedirect(
+        array $user,
+        SystemSettings $settings,
+        #[\SensitiveParameter]
+        ?string $idToken
+    ) {
         $this->auth->setLogin($user["login"]);
         $this->auth->setForceLogin(true);
         $this->sessionInitializer->initSession($this->auth);
+        $this->markSessionAsSignedIn($idToken);
         if ($settings->bypassTwoFa->getValue()) {
             $sessionFingerprint = new SessionFingerprint();
             $sessionFingerprint->setTwoFactorAuthenticationVerified();
@@ -428,58 +514,17 @@ class Controller extends \Piwik\Plugin\Controller
 
         // add permissions that are not yet in the matomo_access table for the user
         foreach ($permissions as $permission) {
-            if(!in_array($permission, $existingPermissions)) {
+            if (!in_array($permission, $existingPermissions)) {
                 $userModel->addUserAccess($login, $permission['access'], [$permission['site']]);
             }
         }
 
         // remove permissions that are already matomo_access table for the user but not in the given set of permissions
         foreach ($existingPermissions as $existingPermission) {
-            if(!in_array($existingPermission, $permissions)) {
+            if (!in_array($existingPermission, $permissions)) {
                 $userModel->removeUserAccess($login, $existingPermission['access'], [$existingPermission['site']]);
             }
         }
-    }
-
-    /**
-     * Validate OAuth state to mitigate CSRF attacks.
-     *
-     * @param string $state
-     * @throws Exception
-     */
-    private function validateState(string $state): void
-    {
-        if ($_SESSION['loginoidc_state'] !== $state) {
-            throw new Exception(Piwik::translate("RebelOIDC_ExceptionStateMismatch"));
-        }
-        unset($_SESSION['loginoidc_state']);
-    }
-
-    /**
-     * Decode a JWT (access token) without verification (for roles extraction).
-     *
-     * @param string $token The JWT access token.
-     * @return array Decoded token payload.
-     * @throws Exception
-     */
-    private function decodeJwt(string $token): array
-    {
-        // Explode the token into its three parts: header, payload, and signature
-        $parts = explode('.', $token);
-        if (count($parts) !== 3) {
-            throw new Exception('Invalid JWT token format.');
-        }
-
-        // Base64-decode the payload (second part of the JWT)
-        $payload = base64_decode($parts[1]);
-
-        // Convert JSON payload to a PHP array
-        $decoded = json_decode($payload, true);
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            throw new Exception('Failed to decode JWT payload: ' . json_last_error_msg());
-        }
-
-        return $decoded;
     }
 
     /**
@@ -568,28 +613,5 @@ class Controller extends \Piwik\Plugin\Controller
 
     // Default to provider user ID if no other option is available
         return $providerUserId;
-    }
-
-    /**
-     * @param $result
-     * @param \Piwik\Plugins\RebelOIDC\SystemSettings $settings
-     * @return array
-     * @throws Exception
-     */
-    private function tryToExtractRolesOfAccessToken($result, \Piwik\Plugins\RebelOIDC\SystemSettings $settings): array
-    {
-        try {
-            $accessToken = $result->access_token;
-            // If id_token exists, merge its decoded content with access token's decoded content
-            if (property_exists($result, 'id_token')) {
-                $idToken = $result->id_token;
-                $decodedToken = array_merge($this->decodeJwt($accessToken), $this->decodeJwt($idToken));
-            } else {
-                $decodedToken = $this->decodeJwt($accessToken);
-            }
-            return $this->extractRoles($decodedToken, $settings->clientId->getValue());
-        } catch (Exception $e) {
-            return [];
-        }
     }
 }
