@@ -118,6 +118,16 @@ class KeycloakTest extends OidcTestCase
         $this->assertNotEmpty((new Model())->getUser('karin')['superuser_access']);
     }
 
+    public function testATokenThatIsNotSignedWithTheKeysThatAreSetIsRefused()
+    {
+        $this->assertStringContainsString(self::REDIRECT . 'index.php', $this->logInAtKeycloak('karin'));
+
+        $this->logInAs('anonymous');
+        $this->set(['jwksUrl' => str_replace('/realms/matomo', '/realms/master', $this->realmUrl) . '/protocol/openid-connect/certs']);
+
+        $this->assertStringContainsString('ExceptionInvalidIdToken', $this->logInAtKeycloak('karin'));
+    }
+
     public function testATokenOfAnotherIssuerThanTheOneSetIsRefused()
     {
         $this->set(['issuer' => 'https://another-issuer.example/realms/matomo']);

@@ -10,6 +10,7 @@
 - New users are only created with an email address the provider reports as verified. If your provider does not send `email_verified`, see the new setting "Trust email addresses the provider has not verified".
 - The ID token is checked: it has to be issued for the client ID, not be expired, belong to the login that was started and, with the new setting "Issuer", come from that issuer. The user info has to be about the same user.
 - The login uses PKCE and a nonce.
+- The signature of the ID token is checked against the keys of the provider, when they are known: through the new setting "Keys URL" or the discovery URL. Based on the work of @tomper00 in #56.
 - The authorize, token and userinfo URLs have to use HTTPS. `[RebelOIDC] allow_http = 1` in `config.ini.php` allows HTTP for a test setup.
 - The FAQ no longer recommends a redirect URI pattern that matches every URL.
 
