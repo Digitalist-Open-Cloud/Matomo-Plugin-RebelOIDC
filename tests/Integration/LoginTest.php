@@ -3,7 +3,9 @@
 namespace Piwik\Plugins\RebelOIDC\tests\Integration;
 
 use Piwik\Config;
+use Piwik\Container\StaticContainer;
 use Piwik\Plugins\RebelOIDC\Protocol;
+use Piwik\Plugins\RebelOIDC\Provider;
 use Piwik\Plugins\RebelOIDC\RebelOIDC;
 use Piwik\Plugins\UsersManager\Model;
 use Piwik\SettingsPiwik;
@@ -277,6 +279,68 @@ class LoginTest extends OidcTestCase
         $this->comeBack(['sub' => 'idp-new', 'preferred_username' => 'newuser', 'email' => 'new@example.org']);
 
         $this->assertNotEmpty((new Model())->getUser('newuser'));
+    }
+
+    public function testTheUrlsThatAreNotSetComeFromTheDiscoveryUrl()
+    {
+        $this->link('anna', 'idp-anna');
+        $this->publish(200, [
+            'issuer' => 'https://published.example',
+            'authorization_endpoint' => 'https://published.example/authorize',
+            'token_endpoint' => 'https://published.example/token',
+            'userinfo_endpoint' => 'https://published.example/userinfo',
+        ]);
+        $this->set(['discoveryUrl' => 'https://idp.example/.well-known/openid-configuration', 'authorizeUrl' => '', 'tokenUrl' => '', 'userInfoUrl' => '']);
+
+        $this->assertStringStartsWith('https://published.example/authorize?', $this->signIn());
+        $this->assertStringContainsString('ExceptionInvalidIdToken', $this->comeBack(['sub' => 'idp-anna']));
+        $this->assertStringContainsString(self::REDIRECT . 'index.php', $this->comeBack(['sub' => 'idp-anna'], ['iss' => 'https://published.example']));
+
+        $this->set(['authorizeUrl' => 'https://idp.example/authorize']);
+        $this->assertStringStartsWith('https://idp.example/authorize?', $this->signIn());
+    }
+
+    public function testADiscoveryUrlThatDoesNotAnswerStopsTheLogin()
+    {
+        $this->publish(500, []);
+        $this->set(['discoveryUrl' => 'https://down.example/.well-known/openid-configuration', 'authorizeUrl' => '']);
+
+        $this->assertStringContainsString('ExceptionDiscoveryFailed', $this->signIn());
+    }
+
+    public function testTheUserIsReadFromTheIdTokenWhenTheSettingSaysSo()
+    {
+        $this->set(['allowSignup' => true, 'userInfoFromIdToken' => true, 'userInfoUrl' => '']);
+
+        $message = $this->comeBack(
+            ['sub' => 'idp-new'],
+            ['preferred_username' => 'newuser', 'email' => 'new@example.org', 'email_verified' => true],
+            'an-opaque-access-token'
+        );
+
+        $this->assertStringContainsString(self::REDIRECT . 'index.php', $message);
+        $this->assertSame('new@example.org', (new Model())->getUser('newuser')['email']);
+        $this->assertSame(['newuser' => 'idp-new'], $this->getLinks());
+    }
+
+    public function testAnErrorOfTheTokenUrlIsReported()
+    {
+        $this->signIn();
+        $this->controller->tokens = (object) ['error' => 'invalid_grant', 'error_description' => 'Code not valid'];
+
+        $message = $this->finishLogin(['state' => $_SESSION['loginoidc_state'], 'code' => 'the-code']);
+
+        $this->assertStringContainsString('ExceptionProviderError', $message);
+    }
+
+    /**
+     * Makes the provider answer the discovery URL with this.
+     */
+    private function publish(int $status, array $document): void
+    {
+        $provider = $this->getMockBuilder(Provider::class)->onlyMethods(['request'])->getMock();
+        $provider->method('request')->willReturn(['status' => $status, 'data' => json_encode($document)]);
+        StaticContainer::getContainer()->set(Provider::class, $provider);
     }
 
     private function startSignInWithAPasswordConfirmationThatRunsOut(): void

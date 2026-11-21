@@ -50,6 +50,18 @@ scope = "openid email"
 allowSignup = 1
 ```
 
+**Do I have to fill in all the URLs of the provider?**
+
+No. Set `Discovery URL` to `<YOUR_PROVIDER_URL>/.well-known/openid-configuration` and leave the authorize, token, userinfo and logout URLs and the issuer empty. The plugin reads them from there and keeps them for a day. A URL you do fill in is used instead of the published one.
+
+**The userinfo URL of my provider only returns `sub`. What now?**
+
+Tick `Read the user from the ID token`. The user ID, email address and username are then taken from the ID token, and the userinfo URL is not used. AD FS needs this.
+
+**Matomo reaches the internet through a proxy, or my provider has a certificate of our own CA. What now?**
+
+The plugin uses Matomo's HTTP client. Set the proxy in the `[proxy]` section and the CA bundle as `custom_cacert_pem` in the `[General]` section of `config/config.ini.php`.
+
 **Which providers can I use?**
 
 I tested the plugin with Auth0, GitHub and Keycloak, which work fine.

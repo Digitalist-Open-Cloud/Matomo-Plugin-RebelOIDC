@@ -15,6 +15,8 @@
 
 ### Added
 
+- Setting "Discovery URL": the provider's `.well-known/openid-configuration`. With it the authorize, token, userinfo and logout URLs and the issuer do not have to be filled in. #19
+- Setting "Read the user from the ID token", for providers whose userinfo URL does not return the user's claims, as AD FS. #22
 - Setting "Email attribute", for providers that have the email address in another field than `email`. #21
 
 ### Changed
@@ -23,6 +25,9 @@
 
 ### Fixed
 
+- Requests to the provider use Matomo's HTTP client, so the proxy and the certificates set in `config.ini.php` apply, and a provider that cannot be reached is reported. #46
+- An error of the token URL is shown with its code instead of "Unexpected response".
+- `rebeloidc:keycloak-sync` reads all users, not only the first 100.
 - After logging out at the provider the browser is sent back to Matomo. #49
 - Login works when the access token is not a JWT, as with GitHub.
 - Tokens with characters outside ASCII in their claims are read correctly.

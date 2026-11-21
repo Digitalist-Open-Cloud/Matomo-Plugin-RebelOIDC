@@ -140,6 +140,20 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
     public $redirectUriOverride;
 
     /**
+     * Where the provider publishes its URLs.
+     *
+     * @var Setting
+     */
+    public $discoveryUrl;
+
+    /**
+     * Whether the user is read from the ID token instead of the userinfo URL.
+     *
+     * @var Setting
+     */
+    public $userInfoFromIdToken;
+
+    /**
      * The field of the provider that holds the email address.
      *
      * @var Setting
@@ -218,11 +232,13 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
         $this->autoLinking = $this->createAutoLinkingSetting();
         $this->trustUnverifiedEmail = $this->createTrustUnverifiedEmailSetting();
         $this->authenticationName = $this->createAuthenticationNameSetting();
+        $this->discoveryUrl = $this->createDiscoveryUrlSetting();
         $this->authorizeUrl = $this->createAuthorizeUrlSetting();
         $this->tokenUrl = $this->createTokenUrlSetting();
         $this->userInfoUrl = $this->createUserInfoUrlSetting();
         $this->endSessionUrl = $this->createEndSessionUrlSetting();
         $this->issuer = $this->createIssuerSetting();
+        $this->userInfoFromIdToken = $this->createUserInfoFromIdTokenSetting();
         $this->userInfoId = $this->createUserInfoIdSetting();
         $this->emailAttribute = $this->createEmailAttributeSetting();
         $this->usernameAttribute = $this->createUsernameAttributeSetting();
@@ -235,6 +251,30 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
         $this->initialIdSite = $this->createInitialIdSiteSetting();
         $this->allowedRole = $this->createAllowedRoleSetting();
         $this->fineGrainedPermissions = $this->createFineGrainedPermissionsSetting();
+    }
+
+    private function createDiscoveryUrlSetting(): SystemSetting
+    {
+        return $this->makeSetting("discoveryUrl", $default = "", FieldConfig::TYPE_STRING, function (FieldConfig $field) {
+            $field->title = Piwik::translate("RebelOIDC_SettingDiscoveryUrl");
+            $field->description = Piwik::translate("RebelOIDC_SettingDiscoveryUrlHelp");
+            $field->uiControl = FieldConfig::UI_CONTROL_URL;
+            $field->validate = function ($value) {
+                if (!empty($value)) {
+                    (new UrlLike())->validate($value);
+                    Protocol::checkSecureUrl($value);
+                }
+            };
+        });
+    }
+
+    private function createUserInfoFromIdTokenSetting(): SystemSetting
+    {
+        return $this->makeSetting("userInfoFromIdToken", $default = false, FieldConfig::TYPE_BOOL, function (FieldConfig $field) {
+            $field->title = Piwik::translate("RebelOIDC_SettingUserInfoFromIdToken");
+            $field->description = Piwik::translate("RebelOIDC_SettingUserInfoFromIdTokenHelp");
+            $field->uiControl = FieldConfig::UI_CONTROL_CHECKBOX;
+        });
     }
 
     private function createIssuerSetting(): SystemSetting
@@ -364,9 +404,9 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
             $field->title = Piwik::translate("RebelOIDC_SettingAuthorizeUrl");
             $field->description = Piwik::translate("RebelOIDC_SettingAuthorizeUrlHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_URL;
-            $field->validators[] = new UrlLike();
             $field->validate = function ($value) {
                 if (!empty($value)) {
+                    (new UrlLike())->validate($value);
                     Protocol::checkSecureUrl($value);
                 }
             };
@@ -384,9 +424,9 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
             $field->title = Piwik::translate("RebelOIDC_SettingTokenUrl");
             $field->description = Piwik::translate("RebelOIDC_SettingTokenUrlHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_URL;
-            $field->validators[] = new UrlLike();
             $field->validate = function ($value) {
                 if (!empty($value)) {
+                    (new UrlLike())->validate($value);
                     Protocol::checkSecureUrl($value);
                 }
             };
@@ -404,9 +444,9 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
             $field->title = Piwik::translate("RebelOIDC_SettingUserInfoUrl");
             $field->description = Piwik::translate("RebelOIDC_SettingUserInfoUrlHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_URL;
-            $field->validators[] = new UrlLike();
             $field->validate = function ($value) {
                 if (!empty($value)) {
+                    (new UrlLike())->validate($value);
                     Protocol::checkSecureUrl($value);
                 }
             };
