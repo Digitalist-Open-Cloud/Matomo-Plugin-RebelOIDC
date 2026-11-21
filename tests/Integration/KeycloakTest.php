@@ -48,10 +48,10 @@ class KeycloakTest extends OidcTestCase
             Config::getInstance()->RebelOIDC = ['allow_http' => 1];
         }
         $this->set([
-            'authorizeUrl' => "$this->realmUrl/protocol/openid-connect/auth",
-            'tokenUrl' => "$this->realmUrl/protocol/openid-connect/token",
-            'userInfoUrl' => "$this->realmUrl/protocol/openid-connect/userinfo",
-            'issuer' => $this->realmUrl,
+            'discoveryUrl' => "$this->realmUrl/.well-known/openid-configuration",
+            'authorizeUrl' => '',
+            'tokenUrl' => '',
+            'userInfoUrl' => '',
             'clientSecret' => 'matomo-secret',
             'redirectUriOverride' => 'http://matomo.test/index.php?module=RebelOIDC&action=callback&provider=oidc',
             'allowSignup' => true,
@@ -125,7 +125,7 @@ class KeycloakTest extends OidcTestCase
             $_SESSION['loginoidc_verifier'] = str_repeat('a', 64);
         });
 
-        $this->assertStringContainsString('ExceptionInvalidResponse', $message);
+        $this->assertStringContainsString('ExceptionProviderError', $message);
         $this->assertEmpty((new Model())->getUser('karin'));
     }
 
@@ -150,7 +150,6 @@ class KeycloakTest extends OidcTestCase
 
     public function testLoggingOutEndsAtKeycloakAndComesBackToMatomo()
     {
-        $this->set(['endSessionUrl' => "$this->realmUrl/protocol/openid-connect/logout"]);
         $general = Config::getInstance()->General;
         $general['login_logout_url'] = 'http://matomo.test/index.php';
         Config::getInstance()->General = $general;

@@ -12,6 +12,7 @@ namespace Piwik\Plugins\RebelOIDC;
 
 use Piwik\Common;
 use Piwik\Config;
+use Piwik\Container\StaticContainer;
 use Piwik\Db;
 use Piwik\DbHelper;
 use Piwik\FrontController;
@@ -147,8 +148,16 @@ class RebelOIDC extends Plugin
     public function logoutMod()
     {
         $settings = new SystemSettings();
-        $endSessionUrl = $settings->endSessionUrl->getValue();
-        if (!empty($endSessionUrl) && !empty($_SESSION["loginoidc_auth"])) {
+        if (empty($_SESSION["loginoidc_auth"])) {
+            return;
+        }
+        try {
+            $endSessionUrl = StaticContainer::get(Provider::class)->getEndpoints($settings)['endSessionUrl'];
+        } catch (\Exception $e) {
+            // Logging out of Matomo has to work when the provider cannot be reached.
+            $endSessionUrl = '';
+        }
+        if (!empty($endSessionUrl)) {
             // make sure we properly unset the plugins session variable
             unset($_SESSION['loginoidc_auth']);
             $endSessionUrl = new Url($endSessionUrl);

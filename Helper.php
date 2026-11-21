@@ -12,6 +12,7 @@ namespace Piwik\Plugins\RebelOIDC;
 
 use Piwik\Plugins\UsersManager\Model;
 use Piwik\Common;
+use Piwik\Container\StaticContainer;
 use Piwik\Piwik;
 use Piwik\Db;
 use Piwik\Nonce;
@@ -120,9 +121,11 @@ trait Helper
      */
     private function isPluginSetup($settings): bool
     {
-        return !empty($settings->authorizeUrl->getValue())
+        $hasUrls = !empty($settings->authorizeUrl->getValue())
             && !empty($settings->tokenUrl->getValue())
-            && !empty($settings->userInfoUrl->getValue())
+            && (!empty($settings->userInfoUrl->getValue()) || $settings->userInfoFromIdToken->getValue());
+
+        return ($hasUrls || !empty($settings->discoveryUrl->getValue()))
             && !empty($settings->clientId->getValue())
             && !empty($settings->clientSecret->getValue());
     }
@@ -153,32 +156,16 @@ trait Helper
     {
         $tokenUrl = $baseUrl . "/realms/" . $realm . "/protocol/openid-connect/token";
 
-        $ch = curl_init($tokenUrl);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
+        $response = StaticContainer::get(Provider::class)->request($tokenUrl, [], [
             'grant_type' => 'client_credentials',
             'client_id' => $clientId,
             'client_secret' => $clientSecret,
-        ]));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/x-www-form-urlencoded',
         ]);
-
-        $response = curl_exec($ch);
-
-        if (curl_errno($ch)) {
-            throw new Exception('Error getting access token: ' . curl_error($ch));
+        if ($response['status'] >= 400) {
+            throw new Exception("Failed to retrieve token. HTTP Code: {$response['status']}. Response: {$response['data']}");
         }
 
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        if ($httpCode >= 400) {
-            throw new Exception("Failed to retrieve token. HTTP Code: $httpCode. Response: $response");
-        }
-
-        $tokenData = json_decode($response, true);
-        curl_close($ch);
-
+        $tokenData = json_decode($response['data'], true);
         if (!isset($tokenData['access_token'])) {
             throw new Exception('Access token not found in Keycloak response');
         }
@@ -195,32 +182,31 @@ trait Helper
      * @return array List of users.
      * @throws Exception
      */
-    private function fetchUsers(string $baseUrl, string $realm, string $token): array
-    {
+    private function fetchUsers(
+        string $baseUrl,
+        string $realm,
+        #[\SensitiveParameter]
+        string $token
+    ): array {
         $usersUrl = $baseUrl . "/admin/realms/" . $realm . "/users";
+        $pageSize = 100;
 
-        $ch = curl_init($usersUrl);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Authorization: Bearer ' . $token,
-            'Content-Type: application/json',
-        ]);
+        $users = [];
+        do {
+            $response = StaticContainer::get(Provider::class)->request(
+                $usersUrl . '?first=' . count($users) . '&max=' . $pageSize,
+                ['Authorization: Bearer ' . $token]
+            );
+            if ($response['status'] >= 400) {
+                throw new Exception("Failed to fetch users. HTTP Code: {$response['status']}. Response: {$response['data']}");
+            }
 
-        $response = curl_exec($ch);
+            $page = json_decode($response['data'], true);
+            $page = is_array($page) ? $page : [];
+            $users = array_merge($users, $page);
+        } while (count($page) === $pageSize);
 
-        if (curl_errno($ch)) {
-            throw new Exception('Error retrieving users: ' . curl_error($ch));
-        }
-
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($httpCode >= 400) {
-            throw new Exception("Failed to fetch users. HTTP Code: $httpCode. Response: $response");
-        }
-
-        $users = json_decode($response, true);
-        return is_array($users) ? $users : [];
+        return $users;
     }
 
     /**
@@ -238,31 +224,16 @@ trait Helper
         // Use the /role-mappings/realm endpoint
         $rolesUrl = $baseUrl . "/admin/realms/" . $realm . "/users/" . $userId . "/role-mappings/realm";
 
-        $ch = curl_init($rolesUrl);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Authorization: Bearer ' . $token,
-            'Content-Type: application/json',
-        ]);
+        $response = StaticContainer::get(Provider::class)->request($rolesUrl, ['Authorization: Bearer ' . $token]);
 
-        $response = curl_exec($ch);
-
-        if (curl_errno($ch)) {
-            throw new Exception('Error retrieving realm roles for user ' . $userId . ': ' . curl_error($ch));
-        }
-
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-        curl_close($ch);
-
-        if ($httpCode === 404 || empty($response)) {
+        if ($response['status'] === 404 || $response['data'] === '') {
             return []; // No roles assigned
-        } elseif ($httpCode >= 400) {
-            throw new Exception("Failed to fetch realm roles for user $userId. HTTP Code: $httpCode. Response: $response");
+        } elseif ($response['status'] >= 400) {
+            throw new Exception("Failed to fetch realm roles for user $userId. HTTP Code: {$response['status']}. Response: {$response['data']}");
         }
 
         // Decode the JSON response
-        $rolesData = json_decode($response, true);
+        $rolesData = json_decode($response['data'], true);
         if (!is_array($rolesData)) {
             return [];
         }

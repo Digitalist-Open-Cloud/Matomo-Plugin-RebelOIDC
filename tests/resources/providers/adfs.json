@@ -1,0 +1,39 @@
+{
+  "settings": {
+    "userInfoFromIdToken": true,
+    "userInfoId": "sub",
+    "usernameAttribute": "upn",
+    "scope": "openid email"
+  },
+  "accessToken": {
+    "aud": "microsoft:identityserver:matomo",
+    "iss": "http://adfs.example.org/adfs/services/trust",
+    "apptype": "Confidential",
+    "appid": "matomo",
+    "authmethod": "urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport",
+    "ver": "1.0",
+    "scp": "email openid"
+  },
+  "idToken": {
+    "aud": "matomo",
+    "iss": "https://adfs.example.org/adfs",
+    "sub": "Kq2aP8mQy1YvZ0sJ3uT5wXr7BnD9cEfGhIjLkMnOpQ=",
+    "upn": "zoe@example.org",
+    "unique_name": "EXAMPLE\\zoe",
+    "email": "zoe@example.org",
+    "apptype": "Confidential",
+    "appid": "matomo",
+    "authmethod": "urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport",
+    "ver": "1.0"
+  },
+  "userInfo": {
+    "sub": "Kq2aP8mQy1YvZ0sJ3uT5wXr7BnD9cEfGhIjLkMnOpQ="
+  },
+  "expect": {
+    "providerUser": "Kq2aP8mQy1YvZ0sJ3uT5wXr7BnD9cEfGhIjLkMnOpQ=",
+    "username": "zoe@example.org",
+    "email": "zoe@example.org",
+    "verifiesEmail": false,
+    "roles": []
+  }
+}

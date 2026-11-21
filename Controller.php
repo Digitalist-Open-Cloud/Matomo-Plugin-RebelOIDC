@@ -26,6 +26,7 @@ use Piwik\Url;
 use Piwik\Plugins\RebelOIDC\SystemSettings;
 use Piwik\Plugins\RebelOIDC\Helper;
 use Piwik\Plugins\RebelOIDC\Protocol;
+use Piwik\Plugins\RebelOIDC\Provider;
 
 class Controller extends \Piwik\Plugin\Controller
 {
@@ -158,7 +159,7 @@ class Controller extends \Piwik\Plugin\Controller
             return;
         }
 
-        $url = $settings->authorizeUrl->getValue();
+        $url = StaticContainer::get(Provider::class)->getEndpoints($settings)['authorizeUrl'];
         Protocol::checkSecureUrl($url);
 
         $_SESSION["loginoidc_state"] = $this->generateKey(32);
@@ -205,8 +206,12 @@ class Controller extends \Piwik\Plugin\Controller
             throw new Exception(Piwik::translate("RebelOIDC_ExceptionUnknownProvider"));
         }
 
-        Protocol::checkSecureUrl($settings->tokenUrl->getValue());
-        Protocol::checkSecureUrl($settings->userInfoUrl->getValue());
+        $endpoints = StaticContainer::get(Provider::class)->getEndpoints($settings);
+        $readsIdToken = (bool) $settings->userInfoFromIdToken->getValue();
+        Protocol::checkSecureUrl($endpoints['tokenUrl']);
+        if (!$readsIdToken) {
+            Protocol::checkSecureUrl($endpoints['userInfoUrl']);
+        }
 
         $tokens = $this->requestTokens(array(
             "client_id" => $settings->clientId->getValue(),
@@ -216,8 +221,11 @@ class Controller extends \Piwik\Plugin\Controller
             "redirect_uri" => $this->getRedirectUri(),
             "grant_type" => "authorization_code",
             "state" => $state
-        ), $settings->tokenUrl->getValue());
+        ), $endpoints['tokenUrl']);
 
+        if (!empty($tokens->error) && is_string($tokens->error)) {
+            throw new Exception(Piwik::translate("RebelOIDC_ExceptionProviderError", [$tokens->error]));
+        }
         if (empty($tokens) || empty($tokens->access_token) || !is_string($tokens->access_token)) {
             throw new Exception(Piwik::translate("RebelOIDC_ExceptionInvalidResponse"));
         }
@@ -225,7 +233,7 @@ class Controller extends \Piwik\Plugin\Controller
         $idToken = empty($tokens->id_token) || !is_string($tokens->id_token) ? null : $tokens->id_token;
         $idClaims = Protocol::decodeJwt($idToken);
         if ($idClaims !== null) {
-            Protocol::checkIdToken($idClaims, $settings->clientId->getValue(), trim((string) $settings->issuer->getValue()), $nonce);
+            Protocol::checkIdToken($idClaims, $settings->clientId->getValue(), $endpoints['issuer'], $nonce);
         }
 
         // Roles and permissions are in the access token at some providers and in the ID token at others.
@@ -238,7 +246,10 @@ class Controller extends \Piwik\Plugin\Controller
             $this->redirectToLogin("You do not have the correct role for access");
         }
 
-        $result = $this->requestUserInfo($tokens->access_token, $settings->userInfoUrl->getValue());
+        if ($readsIdToken && $idClaims === null) {
+            throw new Exception(Piwik::translate("RebelOIDC_ExceptionInvalidResponse"));
+        }
+        $result = $readsIdToken ? (object) $idClaims : $this->requestUserInfo($tokens->access_token, $endpoints['userInfoUrl']);
 
         $userInfoId = $settings->userInfoId->getValue();
         $providerUserId = $result->$userInfoId ?? null;
@@ -331,47 +342,28 @@ class Controller extends \Piwik\Plugin\Controller
         array $data,
         string $tokenUrl
     ) {
-        $dataString = http_build_query($data);
-
-        $curl = curl_init();
-        curl_setopt($curl, CURLOPT_POST, 1);
-        curl_setopt($curl, CURLOPT_POSTFIELDS, $dataString);
-        curl_setopt($curl, CURLOPT_HTTPHEADER, array(
-            "Content-Type: application/x-www-form-urlencoded",
-            "Content-Length: " . strlen($dataString),
-            "Accept: application/json",
-            "User-Agent: RebelOIDC-Matomo-Plugin"
-        ));
-        curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($curl, CURLOPT_URL, $tokenUrl);
-        $response = curl_exec($curl);
-        curl_close($curl);
-
-        $result = json_decode((string) $response);
-
-        return is_object($result) ? $result : null;
+        return $this->readJson(StaticContainer::get(Provider::class)->request($tokenUrl, [], $data));
     }
 
     /**
-     * @return object|null the user info of the provider, or null when the response is not JSON
+     * @return object|null the user info of the provider, or null when it did not answer with it
      */
     protected function requestUserInfo(
         #[\SensitiveParameter]
         string $accessToken,
         string $userInfoUrl
     ) {
-        $curl = curl_init();
-        curl_setopt($curl, CURLOPT_HTTPHEADER, array(
-            "Authorization: Bearer " . $accessToken,
-            "Accept: application/json",
-            "User-Agent: RebelOIDC-Matomo-Plugin"
-        ));
-        curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($curl, CURLOPT_URL, $userInfoUrl);
-        $response = curl_exec($curl);
-        curl_close($curl);
+        $response = StaticContainer::get(Provider::class)->request($userInfoUrl, ["Authorization: Bearer " . $accessToken]);
 
-        $result = json_decode((string) $response);
+        return $response['status'] < 400 ? $this->readJson($response) : null;
+    }
+
+    /**
+     * @param array{status: int, data: string} $response
+     */
+    private function readJson(array $response): ?object
+    {
+        $result = json_decode($response['data']);
 
         return is_object($result) ? $result : null;
     }
