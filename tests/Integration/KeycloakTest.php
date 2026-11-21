@@ -96,7 +96,7 @@ class KeycloakTest extends OidcTestCase
         $this->set(['allowedRole' => 'matomo-user', 'trustUnverifiedEmail' => true]);
 
         $this->assertStringContainsString(self::REDIRECT . 'index.php', $this->logInAtKeycloak('karin'));
-        $this->assertStringContainsString('notification=', $this->logInAtKeycloak('bertil'));
+        $this->assertStringContainsString('ExceptionRoleMissing', $this->logInAtKeycloak('bertil'));
         $this->assertEmpty((new Model())->getUser('bertil'));
     }
 

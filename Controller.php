@@ -281,7 +281,7 @@ class Controller extends \Piwik\Plugin\Controller
         $roles = Protocol::getRoles($claims, $settings->clientId->getValue(), trim((string) $settings->rolesClaim->getValue()));
 
         if (!empty($settings->allowedRole->getValue()) && !in_array($settings->allowedRole->getValue(), $roles)) {
-            $this->redirectToLogin("You do not have the correct role for access");
+            throw new Exception(Piwik::translate("RebelOIDC_ExceptionRoleMissing"));
         }
 
         $superUserRole = trim((string) $settings->superUserRole->getValue());
@@ -324,9 +324,12 @@ class Controller extends \Piwik\Plugin\Controller
             } else {
                 if (Piwik::getCurrentUserLogin() === $user["login"]) {
                     $this->markSessionAsSignedIn($idToken);
-                    $this->passwordVerify->setPasswordVerifiedCorrectly();
                     $this->assignPermissions($userOIDCPermissions, $user['login']);
-                    return;
+                    if ($this->passwordVerify->hasPasswordVerifyBeenRequested()) {
+                        // Sends the user on to what the password was asked for.
+                        $this->passwordVerify->setPasswordVerifiedCorrectly();
+                    }
+                    Url::redirectToUrl("index.php");
                 } else {
                     throw new Exception(Piwik::translate("RebelOIDC_ExceptionAlreadyLinkedToDifferentAccount"));
                 }
@@ -437,9 +440,9 @@ class Controller extends \Piwik\Plugin\Controller
             $userId = $this->determineUsername($settings, $result, $providerUserId, $providerEmail);
             // verify email address domain is allowed to sign up
             if (!empty($settings->allowedSignupDomains->getValue())) {
-                $signupDomain = substr($providerEmail, strpos($providerEmail, "@") + 1);
+                $signupDomain = mb_strtolower(substr($providerEmail, strrpos($providerEmail, "@") + 1));
                 $allowedDomains = explode("\n", $settings->allowedSignupDomains->getValue());
-                if (!in_array($signupDomain, $allowedDomains)) {
+                if (!in_array($signupDomain, $allowedDomains, true)) {
                     throw new Exception(Piwik::translate("RebelOIDC_ExceptionAllowedSignupDomainsDenied"));
                 }
             }
@@ -571,17 +574,6 @@ class Controller extends \Piwik\Plugin\Controller
         });
 
         return $isSuperUser;
-    }
-
-    /**
-     * @param string $message
-     */
-    private function redirectToLogin($message): void
-    {
-        $url = Url::getCurrentUrlWithoutQueryString();
-        $loginUrl = $url . '?notification=' . urlencode($message);
-        Url::redirectToUrl($loginUrl);
-        exit();
     }
 
     /**

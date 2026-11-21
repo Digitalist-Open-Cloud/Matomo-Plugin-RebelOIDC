@@ -44,8 +44,8 @@ class KeyCloakSync extends ConsoleCommand
         $output = $this->getOutput();
         $settings = new SystemSettings();
         if (!$this->isPluginSetup($settings)) {
-            $output->writeln('<error>RebelODIC is not setup yet</error>');
-            return self::ERROR;
+            $output->writeln('<error>RebelOIDC is not set up yet</error>');
+            return self::FAILURE;
         }
         // Validate required options
         try {
@@ -55,7 +55,7 @@ class KeyCloakSync extends ConsoleCommand
             $secret = $this->validateOption($input->getOption('secret'), '--secret');
         } catch (Exception $e) {
             $output->writeln('<error>' . $e->getMessage() . '</error>');
-            return self::SUCCESS;
+            return self::FAILURE;
         }
 
         // Optional options with default values
@@ -67,15 +67,22 @@ class KeyCloakSync extends ConsoleCommand
             $output->writeln(sprintf('<info>Fetched %d users from Keycloak.</info>', count($users)));
         } catch (Exception $e) {
             $output->writeln('<error>Failed to fetch users from Keycloak: ' . $e->getMessage() . '</error>');
-            return self::SUCCESS;
+            return self::FAILURE;
         }
 
+        $failed = 0;
         foreach ($users as $user) {
             try {
-                $this->processUser($user, $userField, $initialIdSite, $output);
+                $failed += $this->processUser($user, $userField, $initialIdSite, $output) ? 0 : 1;
             } catch (Exception $e) {
+                $failed++;
                 $output->writeln('<error>Error processing user: ' . $e->getMessage() . '</error>');
             }
+        }
+
+        if ($failed > 0) {
+            $output->writeln(sprintf('<error>User synchronization completed, %d users failed.</error>', $failed));
+            return self::FAILURE;
         }
 
         $output->writeln('<info>User synchronization completed successfully.</info>');
@@ -85,7 +92,7 @@ class KeyCloakSync extends ConsoleCommand
     /**
      * Processes and synchronizes user.
      */
-    private function processUser(array $user, string $userField, ?int $initialIdSite, $output): void
+    private function processUser(array $user, string $userField, ?int $initialIdSite, $output): bool
     {
         $userId = $user[$userField] ?? null;
         $providerEmail = $user['email'] ?? null;
@@ -95,13 +102,24 @@ class KeyCloakSync extends ConsoleCommand
             throw new Exception('User is missing required fields.');
         }
 
+        $isLinked = Db::fetchOne(
+            "SELECT 1 FROM " . Common::prefixTable("rebeloidc_provider") . " WHERE provider_user = ? AND provider = ?",
+            [$providerUserId, self::PROVIDER_NAME]
+        );
+        if ($isLinked) {
+            $output->writeln(sprintf('<info>Already synced: %s</info>', $userId));
+            return true;
+        }
+
         $isEmailTrusted = (new SystemSettings())->trustUnverifiedEmail->getValue() || Protocol::isEmailVerified($user['emailVerified'] ?? null);
 
         if ($this->addUser($userId, $providerUserId, $providerEmail, $initialIdSite, $isEmailTrusted)) {
             $output->writeln(sprintf('<info>Successfully added user: %s</info>', $userId));
-        } else {
-            $output->writeln(sprintf('<error>Failed to add user: %s</error>', $userId));
+            return true;
         }
+
+        $output->writeln(sprintf('<error>Failed to add user: %s</error>', $userId));
+        return false;
     }
 
     /**

@@ -31,6 +31,12 @@
 
 ### Fixed
 
+- A user without the role that is required sees a message. Before, the login page was shown without one.
+- A user that logs in with the provider while logged in is sent on to Matomo, with the access the provider gives, instead of to an error.
+- An email address with capital letters in its domain is accepted for sign-up when the domain is allowed.
+- `rebeloidc:keycloak-sync` returns a failure code when it could not run or a user could not be synced, and reports users that are already synced as such.
+- Matomo knows the table of the plugin, so it is not reported as unknown.
+- The settings card under Personal -> Security is shown as a card again.
 - Requests to the provider use Matomo's HTTP client, so the proxy and the certificates set in `config.ini.php` apply, and a provider that cannot be reached is reported. #46
 - An error of the token URL is shown with its code instead of "Unexpected response".
 - `rebeloidc:keycloak-sync` reads all users, not only the first 100.
