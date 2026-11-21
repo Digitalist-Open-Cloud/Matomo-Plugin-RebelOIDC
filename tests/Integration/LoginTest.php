@@ -2,106 +2,17 @@
 
 namespace Piwik\Plugins\RebelOIDC\tests\Integration;
 
-use Piwik\Access;
-use Piwik\Common;
 use Piwik\Config;
-use Piwik\Container\StaticContainer;
-use Piwik\Db;
-use Piwik\Plugins\Login\PasswordVerifier;
-use Piwik\Plugins\RebelOIDC\Auth;
-use Piwik\Plugins\RebelOIDC\Controller;
 use Piwik\Plugins\RebelOIDC\Protocol;
-use Piwik\Plugins\RebelOIDC\SystemSettings;
-use Piwik\Plugins\UsersManager\API as UsersManagerAPI;
 use Piwik\Plugins\UsersManager\Model;
-use Piwik\Session\SessionInitializer;
 use Piwik\Tests\Framework\Fixture;
-use Piwik\Tests\Framework\Mock\FakeAccess;
-use Piwik\Tests\Framework\TestCase\IntegrationTestCase;
-
-/**
- * A controller that gets the answers of the provider from the test.
- */
-class ControllerWithFakeProvider extends Controller
-{
-    public $tokens;
-    public $userInfo;
-    public $tokenRequest;
-
-    protected function requestTokens(array $data, string $tokenUrl)
-    {
-        $this->tokenRequest = $data;
-        return $this->tokens;
-    }
-
-    protected function requestUserInfo(string $accessToken, string $userInfoUrl)
-    {
-        return $this->userInfo;
-    }
-}
 
 /**
  * @group RebelOIDC
  * @group Plugins
  */
-class LoginTest extends IntegrationTestCase
+class LoginTest extends OidcTestCase
 {
-    private const REDIRECT = 'Matomo would redirect you to this URL: ';
-
-    /**
-     * @var ControllerWithFakeProvider
-     */
-    private $controller;
-
-    /**
-     * @var bool
-     */
-    private $isPasswordConfirmed = false;
-
-    public function setUp(): void
-    {
-        // Matomo empties the user table between tests, which the foreign key of the plugin's table forbids.
-        Db::exec('SET FOREIGN_KEY_CHECKS = 0');
-        parent::setUp();
-        Db::exec('SET FOREIGN_KEY_CHECKS = 1');
-        Db::exec('DELETE FROM ' . Common::prefixTable('rebeloidc_provider'));
-
-        Fixture::createSuperUser();
-        Fixture::createWebsite('2024-01-01 00:00:00');
-        UsersManagerAPI::getInstance()->addUser('anna', 'a-long-secret-1', 'anna@example.org');
-
-        $this->set([
-            'authorizeUrl' => 'https://idp.example/authorize',
-            'tokenUrl' => 'https://idp.example/token',
-            'userInfoUrl' => 'https://idp.example/userinfo',
-            'clientId' => 'matomo',
-            'clientSecret' => 'secret',
-            'scope' => 'openid email',
-            'disableDirectLoginUrl' => false,
-        ]);
-
-        $passwordVerifier = $this->createMock(PasswordVerifier::class);
-        $passwordVerifier->method('hasBeenVerified')->willReturnCallback(fn () => $this->isPasswordConfirmed);
-        $passwordVerifier->method('requirePasswordVerifiedRecently')->willReturnCallback(fn () => $this->isPasswordConfirmed ?: null);
-        StaticContainer::getContainer()->set(PasswordVerifier::class, $passwordVerifier);
-
-        $_SESSION = [];
-        $_GET = [];
-        $_SERVER['REQUEST_METHOD'] = 'GET';
-        $this->logInAs('anonymous');
-
-        $this->controller = new ControllerWithFakeProvider(new Auth(), $this->createMock(SessionInitializer::class));
-    }
-
-    public function tearDown(): void
-    {
-        $_SESSION = [];
-        $_GET = [];
-        unset($_SERVER['REQUEST_METHOD']);
-
-        parent::tearDown();
-    }
-
     public function testSignInSendsAChallengeAndTheCallbackSendsItsVerifier()
     {
         $url = $this->signIn();
@@ -309,90 +220,5 @@ class LoginTest extends IntegrationTestCase
         $this->isPasswordConfirmed = true;
         $this->signIn();
         $this->isPasswordConfirmed = false;
-    }
-
-    /**
-     * @return string|null the URL the browser is sent to, or null when it is not sent to the provider
-     */
-    private function signIn(): ?string
-    {
-        try {
-            $this->controller->signIn();
-        } catch (\Exception $e) {
-            return trim(explode(self::REDIRECT, $e->getMessage())[1] ?? $e->getMessage());
-        }
-
-        return null;
-    }
-
-    /**
-     * Comes back from the provider, with the user info and the ID token claims it answers with.
-     *
-     * @return string what the callback ended with: the redirect or the error
-     */
-    private function comeBack(array $userInfo, array $idClaims = [], ?string $accessToken = null, bool $withIdToken = true, bool $startSignIn = true): string
-    {
-        if ($startSignIn) {
-            $this->signIn();
-        }
-
-        $idClaims += ['iss' => 'https://idp.example', 'aud' => 'matomo', 'exp' => time() + 300, 'nonce' => $_SESSION['loginoidc_nonce'] ?? '', 'sub' => $userInfo['sub']];
-        $this->controller->tokens = (object) ['access_token' => $accessToken ?? $this->jwt(['sub' => $userInfo['sub']])];
-        if ($withIdToken) {
-            $this->controller->tokens->id_token = $this->jwt($idClaims);
-        }
-        $this->controller->userInfo = (object) $userInfo;
-        $_GET = ['state' => $_SESSION['loginoidc_state'] ?? '', 'code' => 'the-code', 'provider' => 'oidc'];
-
-        try {
-            $this->controller->callback();
-        } catch (\Exception $e) {
-            return $e->getMessage();
-        }
-
-        return '';
-    }
-
-    private function jwt(array $claims): string
-    {
-        return 'e30.' . rtrim(strtr(base64_encode(json_encode($claims)), '+/', '-_'), '=') . '.signature';
-    }
-
-    private function set(array $values): void
-    {
-        Access::doAsSuperUser(function () use ($values) {
-            $settings = new SystemSettings();
-            foreach ($values as $name => $value) {
-                $settings->$name->setValue($value);
-            }
-            $settings->save();
-        });
-    }
-
-    private function logInAs(string $login): void
-    {
-        FakeAccess::clearAccess(false, [], $login === 'anonymous' ? [] : [1], $login);
-    }
-
-    private function link(string $login, string $providerUser): void
-    {
-        Db::query('INSERT INTO ' . Common::prefixTable('rebeloidc_provider') . ' (user, provider_user, provider) VALUES (?, ?, ?)', [$login, $providerUser, 'oidc']);
-    }
-
-    private function getLinks(): array
-    {
-        return array_column(Db::fetchAll('SELECT user, provider_user FROM ' . Common::prefixTable('rebeloidc_provider')), 'provider_user', 'user');
-    }
-
-    public function provideContainerConfig()
-    {
-        return ['Piwik\Access' => new FakeAccess()];
-    }
-
-    protected static function configureFixture($fixture)
-    {
-        parent::configureFixture($fixture);
-
-        $fixture->extraPluginsToLoad = ['RebelOIDC'];
     }
 }

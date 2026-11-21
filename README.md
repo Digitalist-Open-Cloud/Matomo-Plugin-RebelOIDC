@@ -65,7 +65,7 @@ A console command can be used to sync users from Keycloak to Matomo. While this 
 ./console rebeloidc:keycloak-sync --url=keycloak.url --realm=A-realm --client=a-keycloak-service-account --secret=a-secret
 ```
 
-Recommendation is to use a service account in Keycloak for the operation, set it up so it has the right permissions so you could fetch the users.
+Recommendation is to use a service account in Keycloak for the operation, set it up so it has the right permissions so you could fetch the users: the roles `view-users` and `query-users` of the client `realm-management`. Recent versions of Keycloak also want the client scope `kc-admin-api` on the client of the service account, and answer with `401` without it.
 
 The console command overwrites the defaults for user creation in system settings, so make sure you match the settings you have when you run the command.
 
@@ -78,6 +78,17 @@ You can specify which field to use for username, and add default view permission
 Default field to use for user name is `id` when running the console command.
 
 Hopefully. more integrations to other supported OIDC authenticators will be added further on (contributions are more than welcome!).
+
+## Tests
+
+The tests log in with the answers of each supported provider, kept in `tests/resources/providers`, and at a real Keycloak when one is running. Start one with the realm of the tests and tell the tests where it is:
+
+```sh
+docker run -d -p 8080:8080 -v "$PWD/tests/keycloak:/opt/keycloak/data/import:ro" quay.io/keycloak/keycloak:<tag> start-dev --import-realm
+KEYCLOAK_URL=http://localhost:8080 ./console tests:run RebelOIDC
+```
+
+Without `KEYCLOAK_URL` the tests that need Keycloak are skipped.
 
 ## Fork
 

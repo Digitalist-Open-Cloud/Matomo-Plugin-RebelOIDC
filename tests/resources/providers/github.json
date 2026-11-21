@@ -1,0 +1,26 @@
+{
+  "settings": {
+    "userInfoId": "id",
+    "scope": "",
+    "usernameAttribute": "login"
+  },
+  "accessToken": "gho_16C7e42F292c6912E7710c838347Ae178B4a",
+  "idToken": null,
+  "userInfo": {
+    "login": "zoe",
+    "id": 583231,
+    "node_id": "MDQ6VXNlcjU4MzIzMQ==",
+    "type": "User",
+    "name": "Zoë Åström",
+    "company": null,
+    "email": "zoe@example.org",
+    "two_factor_authentication": true
+  },
+  "expect": {
+    "providerUser": "583231",
+    "username": "zoe",
+    "email": "zoe@example.org",
+    "verifiesEmail": false,
+    "roles": []
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "settings": {
+    "userInfoId": "sub",
+    "scope": "openid email"
+  },
+  "accessToken": {
+    "iss": "https://authentik.example/application/o/matomo/",
+    "sub": "9d1c0a5a2b7e4c1f8a3d6e5f4b2c1a0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b",
+    "aud": "matomo",
+    "azp": "matomo",
+    "scope": "openid email",
+    "email": "zoe@example.org",
+    "email_verified": true
+  },
+  "idToken": {
+    "iss": "https://authentik.example/application/o/matomo/",
+    "sub": "9d1c0a5a2b7e4c1f8a3d6e5f4b2c1a0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b",
+    "aud": "matomo",
+    "acr": "goauthentik.io/providers/oauth2/default",
+    "email": "zoe@example.org",
+    "email_verified": true
+  },
+  "userInfo": {
+    "sub": "9d1c0a5a2b7e4c1f8a3d6e5f4b2c1a0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b",
+    "email": "zoe@example.org",
+    "email_verified": true
+  },
+  "expect": {
+    "providerUser": "9d1c0a5a2b7e4c1f8a3d6e5f4b2c1a0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b",
+    "username": "zoe@example.org",
+    "email": "zoe@example.org",
+    "verifiesEmail": true,
+    "roles": []
+  }
+}

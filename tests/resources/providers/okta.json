@@ -1,0 +1,42 @@
+{
+  "settings": {
+    "userInfoId": "email",
+    "scope": "openid email"
+  },
+  "accessToken": {
+    "ver": 1,
+    "iss": "https://dev-123456.okta.com",
+    "aud": "https://dev-123456.okta.com",
+    "sub": "zoe@example.org",
+    "cid": "matomo",
+    "uid": "00u1a2b3c4D5e6F7g8h9",
+    "scp": [
+      "openid",
+      "email"
+    ]
+  },
+  "idToken": {
+    "sub": "00u1a2b3c4D5e6F7g8h9",
+    "email": "zoe@example.org",
+    "ver": 1,
+    "iss": "https://dev-123456.okta.com",
+    "aud": "matomo",
+    "amr": [
+      "pwd"
+    ],
+    "idp": "00o1a2b3c4D5e6F7g8h9",
+    "email_verified": true
+  },
+  "userInfo": {
+    "sub": "00u1a2b3c4D5e6F7g8h9",
+    "email": "zoe@example.org",
+    "email_verified": true
+  },
+  "expect": {
+    "providerUser": "zoe@example.org",
+    "username": "zoe@example.org",
+    "email": "zoe@example.org",
+    "verifiesEmail": true,
+    "roles": []
+  }
+}

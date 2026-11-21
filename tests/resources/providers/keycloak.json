@@ -1,0 +1,66 @@
+{
+  "settings": {
+    "userInfoId": "sub",
+    "scope": "openid email"
+  },
+  "accessToken": {
+    "iss": "https://keycloak.example/realms/matomo",
+    "aud": "account",
+    "azp": "matomo",
+    "sub": "6f1c2f0e-5d0b-4a6e-9a55-0d7f0c1b2a3e",
+    "typ": "Bearer",
+    "realm_access": {
+      "roles": [
+        "offline_access",
+        "matomo-user"
+      ]
+    },
+    "resource_access": {
+      "matomo": {
+        "roles": [
+          "matomo-editor"
+        ]
+      },
+      "account": {
+        "roles": [
+          "view-profile"
+        ]
+      }
+    },
+    "scope": "openid email profile",
+    "email_verified": true,
+    "name": "Zoë Åström",
+    "preferred_username": "zoe",
+    "email": "zoe@example.org"
+  },
+  "idToken": {
+    "iss": "https://keycloak.example/realms/matomo",
+    "aud": "matomo",
+    "azp": "matomo",
+    "sub": "6f1c2f0e-5d0b-4a6e-9a55-0d7f0c1b2a3e",
+    "typ": "ID",
+    "email_verified": true,
+    "name": "Zoë Åström",
+    "preferred_username": "zoe",
+    "email": "zoe@example.org"
+  },
+  "userInfo": {
+    "sub": "6f1c2f0e-5d0b-4a6e-9a55-0d7f0c1b2a3e",
+    "email_verified": true,
+    "name": "Zoë Åström",
+    "preferred_username": "zoe",
+    "given_name": "Zoë",
+    "family_name": "Åström",
+    "email": "zoe@example.org"
+  },
+  "expect": {
+    "providerUser": "6f1c2f0e-5d0b-4a6e-9a55-0d7f0c1b2a3e",
+    "username": "zoe",
+    "email": "zoe@example.org",
+    "verifiesEmail": true,
+    "roles": [
+      "matomo-user",
+      "matomo-editor"
+    ]
+  }
+}
