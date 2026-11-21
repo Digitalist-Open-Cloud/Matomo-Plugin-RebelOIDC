@@ -9,6 +9,7 @@ use Piwik\Plugins\Login\PasswordResetter;
 use Piwik\Plugins\RebelOIDC\Protocol;
 use Piwik\Plugins\RebelOIDC\Provider;
 use Piwik\Plugins\RebelOIDC\RebelOIDC;
+use Piwik\Plugins\RebelOIDC\tests\TestKeys;
 use Piwik\Plugins\UsersManager\Model;
 use Piwik\SettingsPiwik;
 use Piwik\Tests\Framework\Fixture;
@@ -447,8 +448,35 @@ class LoginTest extends OidcTestCase
         ];
     }
 
+    public function testTheIdTokenHasToBeSignedByTheProviderWhenItsKeysAreKnown()
+    {
+        $this->link('anna', 'idp-anna');
+        $key = TestKeys::createRsaKey();
+        $this->publish(200, ['keys' => [TestKeys::toJwk($key, 'k1')]]);
+        $this->set(['jwksUrl' => 'https://idp.example/keys']);
+
+        $this->assertStringContainsString('ExceptionInvalidIdToken', $this->comeBack(['sub' => 'idp-anna']));
+        $this->assertStringContainsString('ExceptionInvalidIdToken', $this->comeBackWithIdTokenSignedBy(TestKeys::createRsaKey()));
+        $this->assertArrayNotHasKey('loginoidc_auth', $_SESSION);
+
+        $this->assertStringContainsString(self::REDIRECT . 'index.php', $this->comeBackWithIdTokenSignedBy($key));
+    }
+
     /**
-     * Makes the provider answer the discovery URL with this.
+     * @param \OpenSSLAsymmetricKey $key
+     */
+    private function comeBackWithIdTokenSignedBy($key): string
+    {
+        $this->signIn();
+        $claims = ['iss' => 'https://idp.example', 'aud' => 'matomo', 'sub' => 'idp-anna', 'exp' => time() + 300, 'nonce' => $_SESSION['loginoidc_nonce']];
+        $this->controller->tokens = (object) ['access_token' => 'an-opaque-access-token', 'id_token' => TestKeys::sign(['alg' => 'RS256', 'kid' => 'k1'], $claims, $key)];
+        $this->controller->userInfo = (object) ['sub' => 'idp-anna'];
+
+        return $this->finishLogin(['state' => $_SESSION['loginoidc_state'], 'code' => 'the-code']);
+    }
+
+    /**
+     * Makes the provider answer the discovery URL and the keys URL with this.
      */
     private function publish(int $status, array $document): void
     {

@@ -161,6 +161,13 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
     public $disablePasswordChange;
 
     /**
+     * Where the provider publishes the keys it signs tokens with.
+     *
+     * @var Setting
+     */
+    public $jwksUrl;
+
+    /**
      * Where the provider publishes its URLs.
      *
      * @var Setting
@@ -259,6 +266,7 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
         $this->userInfoUrl = $this->createUserInfoUrlSetting();
         $this->endSessionUrl = $this->createEndSessionUrlSetting();
         $this->issuer = $this->createIssuerSetting();
+        $this->jwksUrl = $this->createJwksUrlSetting();
         $this->userInfoFromIdToken = $this->createUserInfoFromIdTokenSetting();
         $this->userInfoId = $this->createUserInfoIdSetting();
         $this->emailAttribute = $this->createEmailAttributeSetting();
@@ -325,6 +333,21 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
             $field->title = Piwik::translate("RebelOIDC_SettingDisablePasswordChange");
             $field->description = Piwik::translate("RebelOIDC_SettingDisablePasswordChangeHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_CHECKBOX;
+        });
+    }
+
+    private function createJwksUrlSetting(): SystemSetting
+    {
+        return $this->makeSetting("jwksUrl", $default = "", FieldConfig::TYPE_STRING, function (FieldConfig $field) {
+            $field->title = Piwik::translate("RebelOIDC_SettingJwksUrl");
+            $field->description = Piwik::translate("RebelOIDC_SettingJwksUrlHelp");
+            $field->uiControl = FieldConfig::UI_CONTROL_URL;
+            $field->validate = function ($value) {
+                if (!empty($value)) {
+                    (new UrlLike())->validate($value);
+                    Protocol::checkSecureUrl($value);
+                }
+            };
         });
     }
 

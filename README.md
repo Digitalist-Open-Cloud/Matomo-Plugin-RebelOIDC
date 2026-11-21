@@ -22,7 +22,7 @@ As an super user, go to Admin (cog wheel) -> System -> General settings -> Rebel
 
 For specific settings for your OIDC provider, see the [faq](docs/faq.md)
 
-The URLs of the provider have to start with `https://`. Set the `Issuer` of your provider as well, so that only its ID tokens are accepted. See the [faq](docs/faq.md) for both.
+The easiest way is to set the `Discovery URL` of your provider, `<YOUR_PROVIDER_URL>/.well-known/openid-configuration`. The plugin then reads the other URLs, the issuer and the keys from there, and only accepts ID tokens the provider issued and signed. Without it, fill in the URLs yourself, and set `Issuer` and `Keys URL` to get the same checks. The URLs have to start with `https://`. See the [faq](docs/faq.md).
 
 ### Linking existing users
 

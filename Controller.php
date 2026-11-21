@@ -242,6 +242,9 @@ class Controller extends \Piwik\Plugin\Controller
         $idToken = empty($tokens->id_token) || !is_string($tokens->id_token) ? null : $tokens->id_token;
         $idClaims = Protocol::decodeJwt($idToken);
         if ($idClaims !== null) {
+            if ($endpoints['jwksUrl'] !== '') {
+                $this->checkSignature($idToken, $endpoints['jwksUrl']);
+            }
             Protocol::checkIdToken($idClaims, $settings->clientId->getValue(), $endpoints['issuer'], $nonce);
         }
 
@@ -341,6 +344,24 @@ class Controller extends \Piwik\Plugin\Controller
     ): void {
         $_SESSION['loginoidc_idtoken'] = $idToken;
         $_SESSION['loginoidc_auth'] = true;
+    }
+
+    /**
+     * @throws Exception when the provider did not sign the ID token
+     */
+    private function checkSignature(
+        #[\SensitiveParameter]
+        string $idToken,
+        string $jwksUrl
+    ): void {
+        $provider = StaticContainer::get(Provider::class);
+
+        // A key that is not among the keys kept can be a new key of the provider.
+        $isValid = Signature::isValid($idToken, $provider->getKeys($jwksUrl))
+            || Signature::isValid($idToken, $provider->getKeys($jwksUrl, true));
+        if (!$isValid) {
+            throw new Exception(Piwik::translate("RebelOIDC_ExceptionInvalidIdToken"));
+        }
     }
 
     /**
