@@ -109,6 +109,15 @@ class KeycloakTest extends OidcTestCase
         $this->assertEquals([['site' => 1, 'access' => 'view']], (new Model())->getSitesAccessFromUser('karin'));
     }
 
+    public function testARealmRoleOfKeycloakGivesSuperUserAccessWhenItIsSetForThat()
+    {
+        $this->set(['superUserRole' => 'matomo-user']);
+
+        $this->logInAtKeycloak('karin');
+
+        $this->assertNotEmpty((new Model())->getUser('karin')['superuser_access']);
+    }
+
     public function testATokenOfAnotherIssuerThanTheOneSetIsRefused()
     {
         $this->set(['issuer' => 'https://another-issuer.example/realms/matomo']);

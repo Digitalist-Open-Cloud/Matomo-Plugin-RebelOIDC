@@ -18,7 +18,9 @@ use Piwik\Nonce;
 use Piwik\Plugins\Login\PasswordVerifier;
 use Piwik\Piwik;
 use Piwik\Plugins\UsersManager\API as UsersManagerAPI;
+use Piwik\Plugins\SitesManager\Model as SitesModel;
 use Piwik\Plugins\UsersManager\Model;
+use Piwik\Plugins\UsersManager\UserUpdater;
 use Piwik\Request;
 use Piwik\Session\SessionFingerprint;
 use Piwik\Session\SessionInitializer;
@@ -27,6 +29,7 @@ use Piwik\Plugins\RebelOIDC\SystemSettings;
 use Piwik\Plugins\RebelOIDC\Helper;
 use Piwik\Plugins\RebelOIDC\Protocol;
 use Piwik\Plugins\RebelOIDC\Provider;
+use Piwik\Log\LoggerInterface;
 
 class Controller extends \Piwik\Plugin\Controller
 {
@@ -45,7 +48,13 @@ class Controller extends \Piwik\Plugin\Controller
     /**
      * @var string[]
      */
-    public const ALLOWED_PERMISSIONS = ['admin', 'write', 'view'];
+    /**
+     * Whether the role of the provider makes the user of this login a super user, or null when
+     * no role is set for that.
+     *
+     * @var bool|null
+     */
+    private $isSuperUserByRole = null;
 
     /**
      * Auth implementation to login users.
@@ -236,15 +245,7 @@ class Controller extends \Piwik\Plugin\Controller
             Protocol::checkIdToken($idClaims, $settings->clientId->getValue(), $endpoints['issuer'], $nonce);
         }
 
-        // Roles and permissions are in the access token at some providers and in the ID token at others.
         $decodedToken = array_merge(Protocol::decodeJwt($tokens->access_token) ?? [], $idClaims ?? []);
-
-        $roles = $this->extractRoles($decodedToken, $settings->clientId->getValue());
-
-        $has_correct_role = in_array($settings->allowedRole->getValue(), $roles);
-        if (!empty($settings->allowedRole->getValue()) && !$has_correct_role) {
-            $this->redirectToLogin("You do not have the correct role for access");
-        }
 
         if ($readsIdToken && $idClaims === null) {
             throw new Exception(Piwik::translate("RebelOIDC_ExceptionInvalidResponse"));
@@ -271,7 +272,18 @@ class Controller extends \Piwik\Plugin\Controller
             || Protocol::isEmailVerified($result->email_verified ?? $idClaims['email_verified'] ?? null);
 
         $user = $this->getUserByRemoteId(self::OIDC_PROVIDER, $providerUserId);
-        $userOIDCPermissions = $this->extractPermissions($decodedToken);
+
+        // Roles are in the access token at some providers and in the ID token or the user info at others.
+        $claims = array_merge((array) json_decode((string) json_encode($result), true), $decodedToken);
+        $roles = Protocol::getRoles($claims, $settings->clientId->getValue(), trim((string) $settings->rolesClaim->getValue()));
+
+        if (!empty($settings->allowedRole->getValue()) && !in_array($settings->allowedRole->getValue(), $roles)) {
+            $this->redirectToLogin("You do not have the correct role for access");
+        }
+
+        $superUserRole = trim((string) $settings->superUserRole->getValue());
+        $this->isSuperUserByRole = $superUserRole === '' ? null : in_array($superUserRole, $roles);
+        $userOIDCPermissions = Protocol::getPermissions($claims, $roles, (new SitesModel())->getSitesId());
 
         // auto linking
         // A user that is logged in links by hand, after confirming the password.
@@ -484,95 +496,60 @@ class Controller extends \Piwik\Plugin\Controller
     }
 
     /**
-     * @param array $permissions
-     * @param string $login
-     * @return void
+     * Gives the user the access the provider reported with this login, and takes away the rest.
      *
-     * Receives a set of permissions as an array of tuples ['site' => <siteID>, 'access' => <permission>].
-     * Existing permissions of the given user that are not in this array are removed, missing permissions are added.
+     * @param array<array{site: string, access: string}> $permissions
      */
     private function assignPermissions(array $permissions, string $login): void
     {
-        // Check if fine-grained permissions are enabled in the settings
+        if ($this->syncSuperUserAccess($login)) {
+            return;
+        }
+
+        // Without the setting, access is managed in Matomo and must not be removed.
         $settings = new SystemSettings();
-        // if it is disabled, return so that manually-managed permissions are not removed
         if (!$settings->fineGrainedPermissions->getValue()) {
             return;
         }
 
         $userModel = new Model();
-
-        // get the existing permissions for the user from the matomo_access table
         $existingPermissions = $userModel->getSitesAccessFromUser($login);
 
-        // add permissions that are not yet in the matomo_access table for the user
-        foreach ($permissions as $permission) {
-            if (!in_array($permission, $existingPermissions)) {
-                $userModel->addUserAccess($login, $permission['access'], [$permission['site']]);
-            }
-        }
-
-        // remove permissions that are already matomo_access table for the user but not in the given set of permissions
         foreach ($existingPermissions as $existingPermission) {
             if (!in_array($existingPermission, $permissions)) {
                 $userModel->removeUserAccess($login, $existingPermission['access'], [$existingPermission['site']]);
             }
         }
-    }
 
-    /**
-     * Extract roles from a decoded JWT token.
-     *
-     * @param array $decodedToken Decoded JWT payload.
-     * @param string|null $clientId (Optional) Specific client ID for client roles.
-     * @return array Roles assigned to the user.
-     */
-    private function extractRoles(array $decodedToken, ?string $clientId = null): array
-    {
-        $roles = [];
-
-        // 1. Extract realm roles (if present in the token)
-        if (isset($decodedToken['realm_access']['roles'])) {
-            $roles = array_merge($roles, $decodedToken['realm_access']['roles']);
-        }
-
-        // 2. Extract client-specific roles (if a client ID is provided and roles exist)
-        if ($clientId && isset($decodedToken['resource_access'][$clientId]['roles'])) {
-            $roles = array_merge($roles, $decodedToken['resource_access'][$clientId]['roles']);
-        }
-
-        // 3. Extract roles (if present in the token - MS Entra ID)
-        if (isset($decodedToken['roles'])) {
-            $roles = array_merge($roles, $decodedToken['roles']);
-        }
-
-        return $roles;
-    }
-
-    /**
-     * Extract Permissions from a decoded JWT token.
-     *
-     * Permissions are expected to be found in the claim "matomo-permission-path"
-     * in the format /matomo/<siteID>/<permission>).
-     * Available permissions are read, write and admin.
-     *
-     * @param array $decodedToken Decoded JWT payload.
-     * @return array permissions assigned to the user as array of tuples ['site' => <siteID>, 'access' => <permission>].
-     */
-    private function extractPermissions(array $decodedToken): array
-    {
-        $result = [];
-
-        if (isset($decodedToken['matomo-permission-path'])) {
-            foreach ($decodedToken['matomo-permission-path'] as $path) {
-                $groupPathParts = array_values(array_filter(explode('/', $path)));
-                if (count($groupPathParts) === 3 && $groupPathParts[0] === 'matomo' && in_array($groupPathParts[2], self::ALLOWED_PERMISSIONS)) {
-                    $result[] = ['site' => $groupPathParts[1], 'access' => $groupPathParts['2']];
-                }
+        foreach ($permissions as $permission) {
+            if (!in_array($permission, $existingPermissions)) {
+                $userModel->addUserAccess($login, $permission['access'], [$permission['site']]);
             }
         }
+    }
 
-        return $result;
+    /**
+     * Makes super user access follow the role of the provider, when a role is set for it.
+     *
+     * @return bool whether the user is a super user because of the role
+     */
+    private function syncSuperUserAccess(string $login): bool
+    {
+        if ($this->isSuperUserByRole === null || $this->isSuperUserByRole === $this->hasTheUserSuperUserAccess($login)) {
+            return (bool) $this->isSuperUserByRole;
+        }
+
+        $isSuperUser = $this->isSuperUserByRole;
+        if (!$isSuperUser && count((new Model())->getUsersHavingSuperUserAccess()) === 1) {
+            StaticContainer::get(LoggerInterface::class)->warning('RebelOIDC: {login} keeps super user access, as the only super user.', ['login' => $login]);
+            return false;
+        }
+
+        Access::doAsSuperUser(function () use ($login, $isSuperUser) {
+            (new UserUpdater())->setSuperUserAccessWithoutCurrentPassword($login, (int) $isSuperUser);
+        });
+
+        return $isSuperUser;
     }
 
     /**

@@ -140,6 +140,27 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
     public $redirectUriOverride;
 
     /**
+     * The claim that holds the roles of the user.
+     *
+     * @var Setting
+     */
+    public $rolesClaim;
+
+    /**
+     * The role that makes a user a super user.
+     *
+     * @var Setting
+     */
+    public $superUserRole;
+
+    /**
+     * Whether linked users are kept from setting a password.
+     *
+     * @var Setting
+     */
+    public $disablePasswordChange;
+
+    /**
      * Where the provider publishes its URLs.
      *
      * @var Setting
@@ -249,7 +270,10 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
         $this->redirectUriOverride = $this->createRedirectUriOverrideSetting();
         $this->allowedSignupDomains = $this->createAllowedSignupDomainsSetting();
         $this->initialIdSite = $this->createInitialIdSiteSetting();
+        $this->rolesClaim = $this->createRolesClaimSetting();
         $this->allowedRole = $this->createAllowedRoleSetting();
+        $this->superUserRole = $this->createSuperUserRoleSetting();
+        $this->disablePasswordChange = $this->createDisablePasswordChangeSetting();
         $this->fineGrainedPermissions = $this->createFineGrainedPermissionsSetting();
     }
 
@@ -273,6 +297,33 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
         return $this->makeSetting("userInfoFromIdToken", $default = false, FieldConfig::TYPE_BOOL, function (FieldConfig $field) {
             $field->title = Piwik::translate("RebelOIDC_SettingUserInfoFromIdToken");
             $field->description = Piwik::translate("RebelOIDC_SettingUserInfoFromIdTokenHelp");
+            $field->uiControl = FieldConfig::UI_CONTROL_CHECKBOX;
+        });
+    }
+
+    private function createRolesClaimSetting(): SystemSetting
+    {
+        return $this->makeSetting("rolesClaim", $default = "", FieldConfig::TYPE_STRING, function (FieldConfig $field) {
+            $field->title = Piwik::translate("RebelOIDC_SettingRolesClaim");
+            $field->description = Piwik::translate("RebelOIDC_SettingRolesClaimHelp");
+            $field->uiControl = FieldConfig::UI_CONTROL_TEXT;
+        });
+    }
+
+    private function createSuperUserRoleSetting(): SystemSetting
+    {
+        return $this->makeSetting("superUserRole", $default = "", FieldConfig::TYPE_STRING, function (FieldConfig $field) {
+            $field->title = Piwik::translate("RebelOIDC_SettingSuperUserRole");
+            $field->description = Piwik::translate("RebelOIDC_SettingSuperUserRoleHelp");
+            $field->uiControl = FieldConfig::UI_CONTROL_TEXT;
+        });
+    }
+
+    private function createDisablePasswordChangeSetting(): SystemSetting
+    {
+        return $this->makeSetting("disablePasswordChange", $default = false, FieldConfig::TYPE_BOOL, function (FieldConfig $field) {
+            $field->title = Piwik::translate("RebelOIDC_SettingDisablePasswordChange");
+            $field->description = Piwik::translate("RebelOIDC_SettingDisablePasswordChangeHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_CHECKBOX;
         });
     }

@@ -17,10 +17,15 @@
 
 - Setting "Discovery URL": the provider's `.well-known/openid-configuration`. With it the authorize, token, userinfo and logout URLs and the issuer do not have to be filled in. #19
 - Setting "Read the user from the ID token", for providers whose userinfo URL does not return the user's claims, as AD FS. #22
+- Setting "Roles claim", for providers that have the roles or groups of the user in another claim than Keycloak and Microsoft Entra ID. #31
+- Roles written as `matomo.<idSite>.<access>` or `/matomo/<idSite>/<access>` give access to websites, as the claim `matomo-permission-path` does. The site can be `all`. #31
+- Setting "Role that gives super user access". #31
+- Setting "Linked users cannot set a password". #24
 - Setting "Email attribute", for providers that have the email address in another field than `email`. #21
 
 ### Changed
 
+- With fine-grained permissions, the highest access the provider gives to a website counts, and websites that do not exist are skipped.
 - Auto linking finds the Matomo user by the verified email address of the provider. The user ID of the provider no longer has to be the Matomo username. #14, #20
 
 ### Fixed

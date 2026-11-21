@@ -21,7 +21,9 @@ use Piwik\Plugins\RebelOIDC\Url;
 use Piwik\Request;
 use Piwik\Session;
 use Piwik\SettingsPiwik;
+use Piwik\Piwik;
 use Piwik\Plugin;
+use Piwik\Plugins\Login\PasswordResetter;
 
 class RebelOIDC extends Plugin
 {
@@ -39,6 +41,8 @@ class RebelOIDC extends Plugin
             "Login.logout" => "logoutMod",
             "Login.userRequiresPasswordConfirmation" => "userRequiresPasswordConfirmation",
             'Login.recordFailedLoginAttempt'   => 'onFailedLoginRecordAttempt',
+            'API.UsersManager.updateUser' => 'refusePasswordChange',
+            'Controller.Login.confirmResetPassword' => 'refusePasswordReset',
         );
     }
 
@@ -170,6 +174,46 @@ class RebelOIDC extends Plugin
             );
             Config::getInstance()->General['login_logout_url'] = $endSessionUrl->buildString();
         }
+    }
+
+    /**
+     * @param array<string, mixed> $parameters the parameters of UsersManager.updateUser
+     */
+    public function refusePasswordChange(&$parameters): void
+    {
+        $login = (string) ($parameters['userLogin'] ?? '');
+        if (!empty($parameters['password']) && $login === Piwik::getCurrentUserLogin() && $this->isPasswordLeftToProvider($login)) {
+            throw new \Exception(Piwik::translate('RebelOIDC_ExceptionPasswordLeftToProvider'));
+        }
+    }
+
+    public function refusePasswordReset(): void
+    {
+        $login = Request::fromRequest()->getStringParameter('login', '');
+        if (!$this->isPasswordLeftToProvider($login)) {
+            return;
+        }
+
+        try {
+            StaticContainer::get(PasswordResetter::class)->checkValidConfirmPasswordToken(
+                $login,
+                Request::fromRequest()->getStringParameter('resetToken', '')
+            );
+        } catch (\Exception $e) {
+            // Matomo answers a link that is not valid itself, without telling who is linked.
+            return;
+        }
+
+        throw new \Exception(Piwik::translate('RebelOIDC_ExceptionPasswordLeftToProvider'));
+    }
+
+    private function isPasswordLeftToProvider(string $login): bool
+    {
+        $settings = new SystemSettings();
+
+        return $login !== ''
+            && $settings->disablePasswordChange->getValue()
+            && Db::fetchOne('SELECT 1 FROM ' . Common::prefixTable('rebeloidc_provider') . ' WHERE user = ? AND provider = ?', [$login, 'oidc']);
     }
 
     /**
