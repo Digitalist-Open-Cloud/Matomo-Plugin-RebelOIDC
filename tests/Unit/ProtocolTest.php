@@ -17,7 +17,7 @@ class ProtocolTest extends TestCase
     {
         $claims = ['sub' => '1', 'name' => 'Zoë >>>? ~~~ ÿÿÿ'];
         $payload = rtrim(strtr(base64_encode(json_encode($claims, JSON_UNESCAPED_UNICODE)), '+/', '-_'), '=');
-        $this->assertRegExp('/[-_]/', $payload);
+        $this->assertSame(1, preg_match('/[-_]/', $payload));
 
         $this->assertSame($claims, Protocol::decodeJwt("header.$payload.signature"));
     }
