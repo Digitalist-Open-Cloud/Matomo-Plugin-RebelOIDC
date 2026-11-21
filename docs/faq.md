@@ -66,6 +66,8 @@ The plugin uses Matomo's HTTP client. Set the proxy in the `[proxy]` section and
 
 Yes, when the plugin knows the keys of the provider: with a `Discovery URL`, or with `Keys URL` set to the `jwks_uri` of `<YOUR_PROVIDER_URL>/.well-known/openid-configuration`. A login is then refused unless the provider signed the ID token. Tokens signed with RS256, RS384, RS512 and ES256 are accepted. The keys are kept for a day and fetched again when a token is signed with a key that is not among them.
 
+Roles and permissions in an access token are then only used when the provider signed that token as well. Some providers sign access tokens with keys they do not publish: have those send the roles in the ID token or the user info.
+
 Without the keys, the plugin trusts the ID token because it receives it from the token URL over HTTPS.
 
 **Which providers can I use?**
