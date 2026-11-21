@@ -2,8 +2,10 @@
 
 namespace Piwik\Plugins\RebelOIDC\tests\Integration;
 
+use Piwik\Common;
 use Piwik\Config;
 use Piwik\Container\StaticContainer;
+use Piwik\Piwik;
 use Piwik\API\Request;
 use Piwik\Plugins\Login\PasswordResetter;
 use Piwik\Plugins\RebelOIDC\Protocol;
@@ -343,7 +345,7 @@ class LoginTest extends OidcTestCase
         $this->set(['rolesClaim' => 'groups', 'allowedRole' => 'analysts']);
 
         $this->assertStringContainsString(self::REDIRECT . 'index.php', $this->comeBack(['sub' => 'idp-anna', 'groups' => ['analysts']]));
-        $this->assertStringContainsString('notification=', $this->comeBack(['sub' => 'idp-anna', 'roles' => ['analysts']]));
+        $this->assertStringContainsString('ExceptionRoleMissing', $this->comeBack(['sub' => 'idp-anna', 'roles' => ['analysts']]));
     }
 
     public function testRolesGiveAndTakeAccessToWebsites()
@@ -473,6 +475,37 @@ class LoginTest extends OidcTestCase
         $this->controller->userInfo = (object) ['sub' => 'idp-anna'];
 
         return $this->finishLogin(['state' => $_SESSION['loginoidc_state'], 'code' => 'the-code']);
+    }
+
+    public function testTheDomainOfAnEmailIsComparedWithoutCase()
+    {
+        $this->set(['allowSignup' => true, 'allowedSignupDomains' => "example.com\nexample.org"]);
+
+        $this->comeBack(['sub' => 'idp-new', 'preferred_username' => 'newuser', 'email' => 'new@EXAMPLE.org', 'email_verified' => true]);
+        $message = $this->comeBack(['sub' => 'idp-other', 'preferred_username' => 'other', 'email' => 'other@example.net', 'email_verified' => true]);
+
+        $this->assertNotEmpty((new Model())->getUser('newuser'));
+        $this->assertStringContainsString('ExceptionAllowedSignupDomainsDenied', $message);
+    }
+
+    public function testAUserThatLogsInAgainWhileLoggedInIsSentToMatomoWithTheAccessOfTheProvider()
+    {
+        $this->link('anna', 'idp-anna');
+        $this->set(['fineGrainedPermissions' => true]);
+        $this->logInAs('anna');
+
+        $message = $this->comeBack(['sub' => 'idp-anna', 'roles' => ['matomo.1.write']]);
+
+        $this->assertStringContainsString(self::REDIRECT . 'index.php', $message);
+        $this->assertEquals([['site' => 1, 'access' => 'write']], (new Model())->getSitesAccessFromUser('anna'));
+    }
+
+    public function testMatomoKnowsTheTableOfThePlugin()
+    {
+        $tables = [];
+        Piwik::postEvent('Db.getTablesInstalled', [&$tables]);
+
+        $this->assertContains(Common::prefixTable('rebeloidc_provider'), $tables);
     }
 
     /**

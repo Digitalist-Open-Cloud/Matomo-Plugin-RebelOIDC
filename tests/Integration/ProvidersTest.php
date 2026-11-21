@@ -72,7 +72,7 @@ class ProvidersTest extends OidcTestCase
         }
 
         $this->set($provider['settings'] + ['allowedRole' => 'a-role-nobody-has']);
-        $this->assertStringContainsString('notification=', $this->answerAs($provider));
+        $this->assertStringContainsString('ExceptionRoleMissing', $this->answerAs($provider));
     }
 
     public function getProviders(): array

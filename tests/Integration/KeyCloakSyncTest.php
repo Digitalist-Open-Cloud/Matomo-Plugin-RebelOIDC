@@ -52,6 +52,11 @@ class KeyCloakSyncTest extends IntegrationTestCase
         $settings->save();
     }
 
+    /**
+     * @var int
+     */
+    private $exitCode;
+
     public function testAKeycloakUserIsNotLinkedToAMatomoUserThatOnlyHasItsName()
     {
         $output = $this->sync([
@@ -74,12 +79,27 @@ class KeyCloakSyncTest extends IntegrationTestCase
         $this->assertSame('bertil@example.org', (new Model())->getUser('bertil')['email']);
     }
 
+    public function testSyncFailsWhenAUserCouldNotBeSyncedAndSucceedsWhenRunAgain()
+    {
+        $users = [['id' => 'kc-3', 'username' => 'bertil', 'email' => 'bertil@example.org', 'emailVerified' => true]];
+
+        $this->sync($users);
+        $this->assertSame(0, $this->exitCode);
+
+        $output = $this->sync($users);
+        $this->assertSame(0, $this->exitCode, $output);
+        $this->assertStringContainsString('Already synced: bertil', $output);
+
+        $this->sync([['id' => 'kc-1', 'username' => Fixture::ADMIN_USER_LOGIN, 'email' => 'attacker@example.org', 'emailVerified' => true]]);
+        $this->assertSame(1, $this->exitCode);
+    }
+
     private function sync(array $users): string
     {
         $command = new KeyCloakSyncWithFakeKeycloak();
         $command->users = $users;
         $output = new BufferedOutput();
-        $command->run(new ArrayInput(['--url' => 'https://kc.example', '--realm' => 'r', '--client' => 'c', '--secret' => 's']), $output);
+        $this->exitCode = $command->run(new ArrayInput(['--url' => 'https://kc.example', '--realm' => 'r', '--client' => 'c', '--secret' => 's']), $output);
 
         return $output->fetch();
     }

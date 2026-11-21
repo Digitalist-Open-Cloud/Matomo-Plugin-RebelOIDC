@@ -40,7 +40,7 @@ class RebelOIDC extends Plugin
             "Template.confirmPasswordContent" => "renderConfirmPasswordMod",
             "Login.logout" => "logoutMod",
             "Login.userRequiresPasswordConfirmation" => "userRequiresPasswordConfirmation",
-            'Login.recordFailedLoginAttempt'   => 'onFailedLoginRecordAttempt',
+            'Db.getTablesInstalled' => 'getTablesInstalled',
             'API.UsersManager.updateUser' => 'refusePasswordChange',
             'Controller.Login.confirmResetPassword' => 'refusePasswordReset',
         );
