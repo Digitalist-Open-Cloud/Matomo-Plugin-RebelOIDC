@@ -253,7 +253,9 @@ class Controller extends \Piwik\Plugin\Controller
             throw new Exception(Piwik::translate("RebelOIDC_ExceptionInvalidResponse"));
         }
 
-        $providerEmail = $result->email ?? $idClaims['email'] ?? null;
+        $emailAttribute = $settings->emailAttribute->getValue() ?: 'email';
+        $providerEmail = $result->$emailAttribute ?? $idClaims[$emailAttribute] ?? null;
+        $providerEmail = is_string($providerEmail) ? $providerEmail : null;
         $isEmailTrusted = $settings->trustUnverifiedEmail->getValue()
             || Protocol::isEmailVerified($result->email_verified ?? $idClaims['email_verified'] ?? null);
 
@@ -263,8 +265,7 @@ class Controller extends \Piwik\Plugin\Controller
         // auto linking
         // A user that is logged in links by hand, after confirming the password.
         if (empty($user) && $settings->autoLinking->getValue() && Piwik::isUserIsAnonymous()) {
-            $userModel = new Model();
-            $matomoUser = $userModel->getUser($providerUserId);
+            $matomoUser = empty($providerEmail) ? [] : (new Model())->getUserByEmail($providerEmail);
             if (!empty($matomoUser) && Protocol::canLinkByEmail($matomoUser, $providerEmail, $isEmailTrusted)) {
                 $this->linkAccount($providerUserId, $matomoUser['login']);
                 $user = $matomoUser;

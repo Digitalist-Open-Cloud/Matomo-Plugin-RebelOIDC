@@ -6,10 +6,7 @@
 
 **If I have existing users in Matomo, and adding RebelOIDC - how would I handle the existing users?**
 
-In the system settings there is a checkbox to auto link users. With it, an account of the provider is linked to an existing Matomo user the first time it logs in, when both of these hold:
-
-- the user ID of the provider (the `Userinfo ID` field) is the username of the Matomo user
-- the provider reports the email address of the Matomo user, and reports it as verified (`email_verified`)
+In the system settings there is a checkbox to auto link users. With it, an account of the provider is linked to the Matomo user with the same email address the first time it logs in. The provider has to report the email address as verified (`email_verified`).
 
 A user that is not linked this way can log in with the password and link the account under Personal -> Security. Matomo asks for the password first.
 
@@ -29,6 +26,29 @@ allow_http = 1
 **What is the Issuer setting for?**
 
 When it is set, a login is refused unless the ID token comes from that issuer. You find the value as `issuer` in `<YOUR_PROVIDER_URL>/.well-known/openid-configuration`. The plugin always checks that the ID token was issued for your client ID, has not expired and belongs to the login that was started.
+
+**Where does the user end up after logging out?**
+
+With a `Logout URL` set, logging out of Matomo also logs the user out of the provider, which then sends the browser back to Matomo, or to `login_logout_url` if that is set in `config/config.ini.php`. The provider has to allow that address as a post logout redirect URI. In Keycloak this is `Valid post logout redirect URIs` of the client.
+
+**My provider has the email address in another field than `email`. What now?**
+
+Set `Email attribute` to the name of that field. If the provider does not send `email_verified` with it, see the question about `email_verified` above.
+
+**Can I keep the settings in `config.ini.php`?**
+
+Yes. A setting that is in the `[RebelOIDC]` section of `config/config.ini.php` is used instead of the saved one and cannot be changed in the settings page. The names are those of the settings in `SystemSettings.php`, for example:
+
+```ini
+[RebelOIDC]
+authorizeUrl = "https://<YOUR_PROVIDER_URL>/authorize"
+tokenUrl = "https://<YOUR_PROVIDER_URL>/token"
+userInfoUrl = "https://<YOUR_PROVIDER_URL>/userinfo"
+clientId = "<CLIENT_ID>"
+clientSecret = "<CLIENT_SECRET>"
+scope = "openid email"
+allowSignup = 1
+```
 
 **Which providers can I use?**
 
@@ -82,7 +102,7 @@ https://matomo.org/faq/troubleshooting/faq_25610/
   - Authorize URL: `http(s)://<YOUR_KEYCLOAK_URL>/realms/<REALM>/protocol/openid-connect/auth`
   - Token URL: `http(s)://<YOUR_KEYCLOAK_URL>/realms/<REALM>/protocol/openid-connect/token`
   - Userinfo URL: `http(s)://<YOUR_KEYCLOAK_URL>/realms/<REALM>/protocol/openid-connect/userinfo`
-  - Logout URL: `http(s)://<YOUR_KEYCLOAK_URL>/realms/<REALM>/protocol/openid-connect/logout?redirect_uri=<MATOMO_URL>`
+  - Logout URL: `http(s)://<YOUR_KEYCLOAK_URL>/realms/<REALM>/protocol/openid-connect/logout`
   - Userinfo ID: `sub`
   - OAuth Scopes: `openid email`
 
@@ -91,7 +111,7 @@ https://matomo.org/faq/troubleshooting/faq_25610/
   - Authorize URL: `http(s)://<YOUR_KEYCLOAK_URL>/auth/realms/<REALM>/protocol/openid-connect/auth`
   - Token URL: `http(s)://<YOUR_KEYCLOAK_URL>/auth/realms/<REALM>/protocol/openid-connect/token`
   - Userinfo URL: `http(s)://<YOUR_KEYCLOAK_URL>/auth/realms/<REALM>/protocol/openid-connect/userinfo`
-  - Logout URL: `http(s)://<YOUR_KEYCLOAK_URL>/auth/realms/<REALM>/protocol/openid-connect/logout?redirect_uri=<MATOMO_URL>`
+  - Logout URL: `http(s)://<YOUR_KEYCLOAK_URL>/auth/realms/<REALM>/protocol/openid-connect/logout`
   - Userinfo ID: `sub`
   - OAuth Scopes: `openid email`
 

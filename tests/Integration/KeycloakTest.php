@@ -6,6 +6,7 @@ use Piwik\Config;
 use Piwik\Plugins\RebelOIDC\Auth;
 use Piwik\Plugins\RebelOIDC\Commands\KeyCloakSync;
 use Piwik\Plugins\RebelOIDC\Controller;
+use Piwik\Plugins\RebelOIDC\RebelOIDC;
 use Piwik\Plugins\UsersManager\Model;
 use Piwik\Session\SessionInitializer;
 use Piwik\Tests\Framework\Mock\FakeAccess;
@@ -145,6 +146,25 @@ class KeycloakTest extends OidcTestCase
 
         $this->logInAs('anonymous');
         $this->assertStringContainsString(self::REDIRECT . 'index.php', $this->logInAtKeycloak('bertil'));
+    }
+
+    public function testLoggingOutEndsAtKeycloakAndComesBackToMatomo()
+    {
+        $this->set(['endSessionUrl' => "$this->realmUrl/protocol/openid-connect/logout"]);
+        $general = Config::getInstance()->General;
+        $general['login_logout_url'] = 'http://matomo.test/index.php';
+        Config::getInstance()->General = $general;
+        $this->logInAtKeycloak('karin');
+
+        (new RebelOIDC())->logoutMod();
+
+        $cookies = tempnam(sys_get_temp_dir(), 'keycloak');
+        try {
+            $answer = $this->request(Config::getInstance()->General['login_logout_url'], $cookies);
+        } finally {
+            unlink($cookies);
+        }
+        $this->assertSame('http://matomo.test/index.php', $answer['location'], $answer['body']);
     }
 
     /**
