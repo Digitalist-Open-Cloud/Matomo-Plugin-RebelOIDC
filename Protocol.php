@@ -19,6 +19,11 @@ use Piwik\Piwik;
 class Protocol
 {
     /**
+     * From the lowest to the highest.
+     */
+    public const ACCESS_LEVELS = ['view', 'write', 'admin'];
+
+    /**
      * Seconds the clock of the provider may differ from ours.
      */
     private const CLOCK_LEEWAY = 60;
@@ -105,5 +110,73 @@ class Protocol
         return $isEmailTrusted
             && !empty($email)
             && mb_strtolower($email) === mb_strtolower((string) ($matomoUser['email'] ?? ''));
+    }
+
+    /**
+     * The roles the provider gives the user.
+     *
+     * @param array<string, mixed> $claims the claims of the tokens and the user info
+     * @param string $rolesClaim the name of the claim with the roles, or the path to it with dots.
+     *                           Empty for the places Keycloak and Entra ID use.
+     * @return string[]
+     */
+    public static function getRoles(array $claims, string $clientId, string $rolesClaim = ''): array
+    {
+        $paths = [['realm_access', 'roles'], ['resource_access', $clientId, 'roles'], ['roles']];
+        if ($rolesClaim !== '') {
+            // The name of a claim can have dots itself, as the namespaced claims of Auth0.
+            $paths = [[$rolesClaim], explode('.', $rolesClaim)];
+        }
+
+        $roles = [];
+        foreach ($paths as $path) {
+            $value = $claims;
+            foreach ($path as $key) {
+                $value = is_array($value) ? ($value[$key] ?? null) : null;
+            }
+            foreach ((array) $value as $role) {
+                if (is_string($role)) {
+                    $roles[] = $role;
+                }
+            }
+        }
+
+        return array_values(array_unique($roles));
+    }
+
+    /**
+     * The access to websites the provider gives the user: in the claim "matomo-permission-path"
+     * and in roles, written as /matomo/<idSite>/<access> or matomo.<idSite>.<access>. The site
+     * "all" stands for every website. The highest access to a website counts.
+     *
+     * @param array<string, mixed> $claims
+     * @param string[] $roles
+     * @param int[] $idSites the websites that exist
+     * @return array<array{site: string, access: string}>
+     */
+    public static function getPermissions(array $claims, array $roles, array $idSites): array
+    {
+        $rank = array_flip(self::ACCESS_LEVELS);
+
+        $accessBySite = [];
+        foreach (array_merge((array) ($claims['matomo-permission-path'] ?? []), $roles) as $path) {
+            $parts = is_string($path) ? preg_split('~[/.]~', $path, -1, PREG_SPLIT_NO_EMPTY) : [];
+            if (count($parts) !== 3 || $parts[0] !== 'matomo' || !isset($rank[$parts[2]])) {
+                continue;
+            }
+
+            foreach ($parts[1] === 'all' ? $idSites : array_intersect($idSites, [$parts[1]]) as $idSite) {
+                if (!isset($accessBySite[$idSite]) || $rank[$parts[2]] > $rank[$accessBySite[$idSite]]) {
+                    $accessBySite[$idSite] = $parts[2];
+                }
+            }
+        }
+
+        $permissions = [];
+        foreach ($accessBySite as $idSite => $access) {
+            $permissions[] = ['site' => (string) $idSite, 'access' => $access];
+        }
+
+        return $permissions;
     }
 }

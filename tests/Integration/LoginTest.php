@@ -4,12 +4,15 @@ namespace Piwik\Plugins\RebelOIDC\tests\Integration;
 
 use Piwik\Config;
 use Piwik\Container\StaticContainer;
+use Piwik\API\Request;
+use Piwik\Plugins\Login\PasswordResetter;
 use Piwik\Plugins\RebelOIDC\Protocol;
 use Piwik\Plugins\RebelOIDC\Provider;
 use Piwik\Plugins\RebelOIDC\RebelOIDC;
 use Piwik\Plugins\UsersManager\Model;
 use Piwik\SettingsPiwik;
 use Piwik\Tests\Framework\Fixture;
+use Piwik\Tests\Framework\Mock\FakeAccess;
 
 /**
  * @group RebelOIDC
@@ -331,6 +334,117 @@ class LoginTest extends OidcTestCase
         $message = $this->finishLogin(['state' => $_SESSION['loginoidc_state'], 'code' => 'the-code']);
 
         $this->assertStringContainsString('ExceptionProviderError', $message);
+    }
+
+    public function testRolesAreReadFromTheClaimThatIsSet()
+    {
+        $this->link('anna', 'idp-anna');
+        $this->set(['rolesClaim' => 'groups', 'allowedRole' => 'analysts']);
+
+        $this->assertStringContainsString(self::REDIRECT . 'index.php', $this->comeBack(['sub' => 'idp-anna', 'groups' => ['analysts']]));
+        $this->assertStringContainsString('notification=', $this->comeBack(['sub' => 'idp-anna', 'roles' => ['analysts']]));
+    }
+
+    public function testRolesGiveAndTakeAccessToWebsites()
+    {
+        FakeAccess::clearAccess(true);
+        Fixture::createWebsite('2024-01-01 00:00:00');
+        $this->logInAs('anonymous');
+        $this->link('anna', 'idp-anna');
+        $this->set(['fineGrainedPermissions' => true]);
+
+        $this->comeBack(['sub' => 'idp-anna', 'roles' => ['matomo.all.view', '/matomo/2/admin']]);
+        $this->assertEqualsCanonicalizing(
+            [['site' => 1, 'access' => 'view'], ['site' => 2, 'access' => 'admin']],
+            (new Model())->getSitesAccessFromUser('anna')
+        );
+
+        $this->comeBack(['sub' => 'idp-anna', 'roles' => ['matomo.2.write']]);
+        $this->assertEquals([['site' => 2, 'access' => 'write']], (new Model())->getSitesAccessFromUser('anna'));
+    }
+
+    public function testRolesDoNotChangeAccessWithoutTheSetting()
+    {
+        $this->link('anna', 'idp-anna');
+        (new Model())->addUserAccess('anna', 'admin', [1]);
+
+        $this->comeBack(['sub' => 'idp-anna', 'roles' => ['matomo.1.view', 'matomo-admins']]);
+
+        $this->assertEquals([['site' => 1, 'access' => 'admin']], (new Model())->getSitesAccessFromUser('anna'));
+        $this->assertEmpty((new Model())->getUser('anna')['superuser_access']);
+    }
+
+    public function testSuperUserAccessFollowsTheRoleThatIsSetForIt()
+    {
+        $this->link('anna', 'idp-anna');
+        $this->set(['superUserRole' => 'matomo-admins']);
+
+        $this->comeBack(['sub' => 'idp-anna', 'roles' => ['matomo-admins']]);
+        $this->assertNotEmpty((new Model())->getUser('anna')['superuser_access']);
+
+        $this->comeBack(['sub' => 'idp-anna', 'roles' => ['staff']]);
+        $this->assertEmpty((new Model())->getUser('anna')['superuser_access']);
+    }
+
+    public function testTheOnlySuperUserKeepsSuperUserAccessWithoutTheRole()
+    {
+        $this->link(Fixture::ADMIN_USER_LOGIN, 'idp-admin');
+        $this->set(['superUserRole' => 'matomo-admins']);
+
+        $message = $this->comeBack(['sub' => 'idp-admin', 'roles' => ['staff']]);
+
+        $this->assertStringContainsString(self::REDIRECT . 'index.php', $message);
+        $this->assertNotEmpty((new Model())->getUser(Fixture::ADMIN_USER_LOGIN)['superuser_access']);
+    }
+
+    public function testALinkedUserCannotSetAPasswordWhenTheSettingSaysSo()
+    {
+        $this->link('anna', 'idp-anna');
+        $this->logInAs('anna');
+        $this->set(['disablePasswordChange' => true]);
+
+        $this->expectExceptionMessage('ExceptionPasswordLeftToProvider');
+        Request::processRequest('UsersManager.updateUser', ['userLogin' => 'anna', 'password' => 'another-long-secret-2']);
+    }
+
+    public function testAUserThatIsNotLinkedIsNotKeptFromSettingAPassword()
+    {
+        $this->set(['disablePasswordChange' => true]);
+        $this->logInAs('anna');
+
+        // Matomo gets as far as asking to confirm the current password.
+        $this->expectExceptionMessage('UsersManager_');
+        Request::processRequest('UsersManager.updateUser', ['userLogin' => 'anna', 'password' => 'another-long-secret-2']);
+    }
+
+    /**
+     * @dataProvider getResetLinks
+     */
+    public function testALinkedUserCannotResetThePasswordWhenTheSettingSaysSo(bool $isLinkValid, bool $isRefused)
+    {
+        $this->link('anna', 'idp-anna');
+        $this->set(['disablePasswordChange' => true]);
+        $resetter = $this->createMock(PasswordResetter::class);
+        if (!$isLinkValid) {
+            $resetter->method('checkValidConfirmPasswordToken')->willThrowException(new \Exception('not valid'));
+        }
+        StaticContainer::getContainer()->set(PasswordResetter::class, $resetter);
+        $_GET = ['login' => 'anna', 'resetToken' => 'a-token'];
+
+        if ($isRefused) {
+            $this->expectExceptionMessage('ExceptionPasswordLeftToProvider');
+        }
+        (new RebelOIDC())->refusePasswordReset();
+
+        $this->assertFalse($isRefused);
+    }
+
+    public function getResetLinks(): array
+    {
+        return [
+            'a valid link' => [true, true],
+            'a link that is not valid is left to Matomo' => [false, false],
+        ];
     }
 
     /**

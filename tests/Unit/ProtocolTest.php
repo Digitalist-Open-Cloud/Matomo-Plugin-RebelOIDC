@@ -117,4 +117,44 @@ class ProtocolTest extends TestCase
             'sub' => '1',
         ];
     }
+
+    /**
+     * @dataProvider getClaimsWithRoles
+     */
+    public function testRolesAreReadFromWhereTheProviderHasThem(array $claims, string $rolesClaim, array $expected)
+    {
+        $this->assertSame($expected, Protocol::getRoles($claims, 'matomo', $rolesClaim));
+    }
+
+    public function getClaimsWithRoles(): array
+    {
+        return [
+            'Keycloak and Entra ID without a setting' => [
+                ['realm_access' => ['roles' => ['a']], 'resource_access' => ['matomo' => ['roles' => ['b']], 'other' => ['roles' => ['x']]], 'roles' => ['c', 'a']],
+                '',
+                ['a', 'b', 'c'],
+            ],
+            'a claim' => [['groups' => ['staff', 'admins'], 'roles' => ['x']], 'groups', ['staff', 'admins']],
+            'a claim inside another' => [['resource_access' => ['other' => ['roles' => ['x']]]], 'resource_access.other.roles', ['x']],
+            'a claim with dots in its name' => [['https://example.org/roles' => ['editor']], 'https://example.org/roles', ['editor']],
+            'a single role' => [['role' => 'editor'], 'role', ['editor']],
+            'no roles' => [['groups' => [['name' => 'staff']], 'sub' => 'anna'], 'groups', []],
+            'a claim that is missing' => [['sub' => 'anna'], 'groups', []],
+        ];
+    }
+
+    public function testAccessToWebsitesIsReadFromThePermissionClaimAndFromRoles()
+    {
+        $permissions = Protocol::getPermissions(
+            ['matomo-permission-path' => ['/matomo/1/view', '/matomo/2/admin', '/matomo/9/admin', '/other/1/admin']],
+            ['matomo.1.write', 'matomo.all.view', 'matomo.3.owner', 'matomo-user', 'matomo.2.view'],
+            [1, 2, 3]
+        );
+
+        $this->assertEqualsCanonicalizing([
+            ['site' => '1', 'access' => 'write'],
+            ['site' => '2', 'access' => 'admin'],
+            ['site' => '3', 'access' => 'view'],
+        ], $permissions);
+    }
 }

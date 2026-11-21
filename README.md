@@ -44,14 +44,30 @@ You can set an initial site for all new users which logs in with OIDC for the fi
 
 If you have an organisation where not all in the organisations should have access, you can choose which role should have access to Matomo. The role needs to be part of the JWT token (default behavior in many OIDC providers, otherwise you need to configure it).
 
+## Roles
+
+The plugin reads the roles of a user from the tokens and the user info. Without further settings it looks where Keycloak (`realm_access.roles`, `resource_access.<client ID>.roles`) and Microsoft Entra ID (`roles`) have them. If your provider has roles or groups in another claim, set `Roles claim` to its name, for example `groups`. A claim inside another is written with dots.
+
+Roles are used for three things: restricting login to a role, access to websites, and super user access.
+
 ## Fine-grained permissions
 
-You can set fine-grained permissions for users through adding a `matomo-permission-path` claim.
-In that claim, multiple permissions can be added as a path in the format `/matomo/<siteID>/<permission>`
-Available permissions are `admin`, `write` and `view` .
-If you are using Keycloak, this claim can be added to your token through creating a group/childgroup hierarchy and adding a custom group mapper for the matomo client.
+With `Use fine-grained permissions` ticked, the provider decides which websites a user has access to. At every login, access is added and removed to match what the provider sends. Access given in Matomo is removed.
 
-Fine-grained permissions can be enabled in the settings in Admin (cog wheel) -> System -> General settings -> Rebel OIDC.
+The provider sends access as paths in the format `/matomo/<siteID>/<permission>`, where the permission is `admin`, `write` or `view` and the site ID can be `all`:
+
+- in a claim named `matomo-permission-path`. In Keycloak, create a group/childgroup hierarchy and add a group mapper with that claim name to the Matomo client.
+- as roles, written as `/matomo/<siteID>/<permission>` or `matomo.<siteID>.<permission>`. Use this when your provider cannot add a claim of your own, as Microsoft Entra ID.
+
+The highest permission a user gets for a website counts.
+
+## Super user access by role
+
+`Role that gives super user access` makes every user with that role a super user, and takes super user access away at the next login without the role. Everyone who can hand out that role at your provider can then take full control over Matomo, so leave it empty unless that is what you want. Keep one super user that logs in with a password, in case the provider cannot be reached. Do not combine it with the setting that keeps super users from logging in with OIDC.
+
+## Passwords
+
+With `Linked users cannot set a password`, a user that is linked to an account of the provider cannot change or reset the Matomo password. A super user can still set a password for another user.
 
 ## Sync users
 
