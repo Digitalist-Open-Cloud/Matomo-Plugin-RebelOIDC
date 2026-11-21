@@ -22,6 +22,14 @@ As an super user, go to Admin (cog wheel) -> System -> General settings -> Rebel
 
 For specific settings for your OIDC provider, see the [faq](docs/faq.md)
 
+The URLs of the provider have to start with `https://`. Set the `Issuer` of your provider as well, so that only its ID tokens are accepted. See the [faq](docs/faq.md) for both.
+
+### Linking existing users
+
+A user that already exists in Matomo logs in with the password and links the account of the provider under Personal -> Security. Matomo asks for the password before linking.
+
+With `Enable auto linking` this happens at the first login instead, when the user ID of the provider is the Matomo username and the provider reports the email address of the Matomo user as verified.
+
 ### Username Attribute from OIDC
 
 You can use any claim, like preferred_username, id etc. to create the Matomo user name.
@@ -51,7 +59,7 @@ Fine-grained permissions can be enabled in the settings in Admin (cog wheel) -> 
 
 This function is in beta, and should be handled with care.
 
-A console command can be used to sync users from Keycloak to Matomo. While this is not using OIDC, it is something that could be used to import or sync your users to Matomo to be able to set user permissions etc. before they login the first time. If you rerun the Keycloak sync, and user already exists, it will not import it again.
+A console command can be used to sync users from Keycloak to Matomo. While this is not using OIDC, it is something that could be used to import or sync your users to Matomo to be able to set user permissions etc. before they login the first time. If you rerun the Keycloak sync, and user already exists, it will not import it again. A user that exists in Matomo is only linked when Keycloak has the same email address for it and has verified it.
 
 ```sh
 ./console rebeloidc:keycloak-sync --url=keycloak.url --realm=A-realm --client=a-keycloak-service-account --secret=a-secret

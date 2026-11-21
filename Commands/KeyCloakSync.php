@@ -5,6 +5,8 @@ namespace Piwik\Plugins\RebelOIDC\Commands;
 use Exception;
 use Piwik\Plugin\ConsoleCommand;
 use Piwik\Plugins\RebelOIDC\Helper;
+use Piwik\Plugins\RebelOIDC\Protocol;
+use Piwik\Plugins\UsersManager\Model;
 use Piwik\Plugins\UsersManager\API as UsersManagerApi;
 use Piwik\Common;
 use Piwik\Db;
@@ -93,7 +95,9 @@ class KeyCloakSync extends ConsoleCommand
             throw new Exception('User is missing required fields.');
         }
 
-        if ($this->addUser($userId, $providerUserId, $providerEmail, $initialIdSite)) {
+        $isEmailTrusted = (new SystemSettings())->trustUnverifiedEmail->getValue() || Protocol::isEmailVerified($user['emailVerified'] ?? null);
+
+        if ($this->addUser($userId, $providerUserId, $providerEmail, $initialIdSite, $isEmailTrusted)) {
             $output->writeln(sprintf('<info>Successfully added user: %s</info>', $userId));
         } else {
             $output->writeln(sprintf('<error>Failed to add user: %s</error>', $userId));
@@ -103,12 +107,18 @@ class KeyCloakSync extends ConsoleCommand
     /**
      * Adds a user to Matomo and links it to a remote user ID from Keycloak.
      */
-    private function addUser(string $userId, string $providerUserId, string $providerEmail, ?int $initialIdSite): bool
+    private function addUser(string $userId, string $providerUserId, string $providerEmail, ?int $initialIdSite, bool $isEmailTrusted): bool
     {
         $api = UsersManagerApi::getInstance();
 
+        // A Matomo user with the same name is not known to be the same person.
+        $matomoUser = (new Model())->getUser($userId);
+        if (!empty($matomoUser) && !Protocol::canLinkByEmail($matomoUser, $providerEmail, $isEmailTrusted)) {
+            throw new Exception("$userId exists in Matomo and was not linked: Keycloak has to report the email address of the Matomo user, as verified.");
+        }
+
         // Check if user already exists in Matomo
-        if (!$api->userExists($userId) && !$api->userEmailExists($providerEmail)) {
+        if (empty($matomoUser) && !$api->userEmailExists($providerEmail)) {
             $api->addUser(
                 $userId,
                 "(disallow password login)", // Prevent password login

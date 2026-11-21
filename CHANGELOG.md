@@ -1,5 +1,23 @@
 # Change Log
 
+## [Unreleased]
+
+### Security
+
+- Auto linking and `rebeloidc:keycloak-sync` no longer link an account to a Matomo user because the names are the same. The provider also has to report the email address of the Matomo user, as verified.
+- Linking an account to the user that is logged in needs a confirmed password.
+- "Disable password confirmation" only applies after the provider identified the user of the session. Before, any account of the provider turned the confirmation off.
+- New users are only created with an email address the provider reports as verified. If your provider does not send `email_verified`, see the new setting "Trust email addresses the provider has not verified".
+- The ID token is checked: it has to be issued for the client ID, not be expired, belong to the login that was started and, with the new setting "Issuer", come from that issuer. The user info has to be about the same user.
+- The login uses PKCE and a nonce.
+- The authorize, token and userinfo URLs have to use HTTPS. `[RebelOIDC] allow_http = 1` in `config.ini.php` allows HTTP for a test setup.
+- The FAQ no longer recommends a redirect URI pattern that matches every URL.
+
+### Fixed
+
+- Login works when the access token is not a JWT, as with GitHub.
+- Tokens with characters outside ASCII in their claims are read correctly.
+
 ## [5.1.4] - 2026-02-03
 
 ### Fixed

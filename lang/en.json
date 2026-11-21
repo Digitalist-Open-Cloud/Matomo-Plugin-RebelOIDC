@@ -35,7 +35,7 @@
     "SettingAllowedSignupDomains": "Restrict user creation to domains",
     "SettingAllowedSignupDomainsHelp": "List of email domains which should be allowed to create new accounts. Multiple domains have to be separated by line breaks. When empty, any email domain will be accepted.",
     "SettingAutoLinking": "Enable auto linking",
-    "SettingAutoLinkingHelp": "Enables auto linking of accounts which have the same user id in Matomo and the OIDC provider",
+    "SettingAutoLinkingHelp": "Links an account of the provider to the Matomo user whose username is the user id of the provider, the first time it is used to log in. The provider has to report the email address of the Matomo user, as verified.",
     "SettingFineGrainedPermissions": "Use fine-grained permissions",
     "SettingFineGrainedPermissionsHelp": "If this box is ticked, site access permissions are automatically added or removed based on the values in the \"matomo-permission-path\"-claim in the token.",
     "SettingsUsernameAttribute": "Username Attribute from OIDC claim",
@@ -63,6 +63,14 @@
     "SettingAllowedRole": "Restrict user login with specific role",
     "SettingAllowedRoleHelp": "Role to require, like matomo-user",
     "InitialIdSite": "Initial site id",
-    "InitialIdSiteHelp": "If added, the users will have view permissions on this site."
+    "InitialIdSiteHelp": "If added, the users will have view permissions on this site.",
+    "SettingIssuer": "Issuer",
+    "SettingIssuerHelp": "The issuer of your provider, e.g. https://<USERNAME>.eu.auth0.com/. When set, a login is refused unless the ID token is from this issuer. It is the value of \"issuer\" in the provider's /.well-known/openid-configuration.",
+    "SettingTrustUnverifiedEmail": "Trust email addresses the provider has not verified",
+    "SettingTrustUnverifiedEmailHelp": "Creating users and auto linking need an email address the provider reports as verified (the claim \"email_verified\"). Tick this only if your provider does not send that claim and users cannot set their email address there themselves. Otherwise someone can take the email address of another person.",
+    "ExceptionInvalidIdToken": "The ID token of the OAuth service is not valid for this login.",
+    "ExceptionUrlNotHttps": "The URL %1$s has to start with https://.",
+    "ExceptionEmailNotVerified": "User could not be created because the OAuth service has not verified the email address.",
+    "ExceptionPasswordConfirmationRequired": "Confirm your password before linking an account."
   }
 }

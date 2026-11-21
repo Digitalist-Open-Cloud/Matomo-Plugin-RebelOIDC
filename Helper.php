@@ -288,7 +288,7 @@ trait Helper
      * @return array List of users with their realm roles.
      * @throws Exception
      */
-    private function getUsers(string $baseUrl, string $realm, string $clientId, string $clientSecret): array
+    protected function getUsers(string $baseUrl, string $realm, string $clientId, string $clientSecret): array
     {
         $token = $this->getAccessToken($baseUrl, $realm, $clientId, $clientSecret);
         $users = $this->fetchUsers($baseUrl, $realm, $token);

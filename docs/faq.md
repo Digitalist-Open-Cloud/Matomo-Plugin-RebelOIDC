@@ -6,7 +6,29 @@
 
 **If I have existing users in Matomo, and adding RebelOIDC - how would I handle the existing users?**
 
-In the system settings there is a checkbox to auto link users - activating this, would keep your existing users with the user in the OIDC-provider if they have the same email.
+In the system settings there is a checkbox to auto link users. With it, an account of the provider is linked to an existing Matomo user the first time it logs in, when both of these hold:
+
+- the user ID of the provider (the `Userinfo ID` field) is the username of the Matomo user
+- the provider reports the email address of the Matomo user, and reports it as verified (`email_verified`)
+
+A user that is not linked this way can log in with the password and link the account under Personal -> Security. Matomo asks for the password first.
+
+**My provider does not send `email_verified`. What now?**
+
+Creating users and auto linking need an email address the provider vouches for. Some providers, for example Microsoft Entra ID and GitHub, do not send `email_verified`. If your users cannot set their email address at the provider themselves, tick `Trust email addresses the provider has not verified` in the settings. Otherwise leave it off: someone could use the email address of another person.
+
+**Does the provider have to use HTTPS?**
+
+Yes. The authorize, token and userinfo URLs have to start with `https://`, as the plugin trusts what it receives over that connection. For a test setup without HTTPS, add this to `config/config.ini.php`:
+
+```ini
+[RebelOIDC]
+allow_http = 1
+```
+
+**What is the Issuer setting for?**
+
+When it is set, a login is refused unless the ID token comes from that issuer. You find the value as `issuer` in `<YOUR_PROVIDER_URL>/.well-known/openid-configuration`. The plugin always checks that the ID token was issued for your client ID, has not expired and belongs to the login that was started.
 
 **Which providers can I use?**
 
@@ -107,7 +129,7 @@ https://matomo.org/faq/troubleshooting/faq_25610/
   - OAuth Scopes: `openid email`
 
   In the Authentik Provider:
-  - Redirect URIs: `.*` (only that worked for me, don't forget the DOT before!)
+  - Redirect URIs: the callback URL of your Matomo, with the matching mode `Strict`. Do not use a pattern such as `.*`: it lets the provider send the login of your users to any website.
   Remaining inputs for provider and application as normal.
 
 - Okta:
