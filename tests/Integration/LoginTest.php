@@ -464,14 +464,30 @@ class LoginTest extends OidcTestCase
         $this->assertStringContainsString(self::REDIRECT . 'index.php', $this->comeBackWithIdTokenSignedBy($key));
     }
 
+    public function testRolesInAnAccessTokenOnlyCountWhenTheProviderSignedItAndItsKeysAreKnown()
+    {
+        $this->link('anna', 'idp-anna');
+        $key = TestKeys::createRsaKey();
+        $this->publish(200, ['keys' => [TestKeys::toJwk($key, 'k1')]]);
+        $this->set(['jwksUrl' => 'https://idp.example/keys', 'allowedRole' => 'analysts']);
+        $claims = ['sub' => 'idp-anna', 'roles' => ['analysts']];
+
+        $message = $this->comeBackWithIdTokenSignedBy($key, TestKeys::sign(['alg' => 'RS256', 'kid' => 'k1'], $claims, TestKeys::createRsaKey()));
+        $this->assertStringContainsString('ExceptionRoleMissing', $message);
+        $this->assertStringContainsString('ExceptionRoleMissing', $this->comeBackWithIdTokenSignedBy($key, $this->jwt($claims)));
+
+        $message = $this->comeBackWithIdTokenSignedBy($key, TestKeys::sign(['alg' => 'RS256', 'kid' => 'k1'], $claims, $key));
+        $this->assertStringContainsString(self::REDIRECT . 'index.php', $message);
+    }
+
     /**
      * @param \OpenSSLAsymmetricKey $key
      */
-    private function comeBackWithIdTokenSignedBy($key): string
+    private function comeBackWithIdTokenSignedBy($key, string $accessToken = 'an-opaque-access-token'): string
     {
         $this->signIn();
         $claims = ['iss' => 'https://idp.example', 'aud' => 'matomo', 'sub' => 'idp-anna', 'exp' => time() + 300, 'nonce' => $_SESSION['loginoidc_nonce']];
-        $this->controller->tokens = (object) ['access_token' => 'an-opaque-access-token', 'id_token' => TestKeys::sign(['alg' => 'RS256', 'kid' => 'k1'], $claims, $key)];
+        $this->controller->tokens = (object) ['access_token' => $accessToken, 'id_token' => TestKeys::sign(['alg' => 'RS256', 'kid' => 'k1'], $claims, $key)];
         $this->controller->userInfo = (object) ['sub' => 'idp-anna'];
 
         return $this->finishLogin(['state' => $_SESSION['loginoidc_state'], 'code' => 'the-code']);

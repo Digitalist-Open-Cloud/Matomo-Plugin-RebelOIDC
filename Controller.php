@@ -242,13 +242,19 @@ class Controller extends \Piwik\Plugin\Controller
         $idToken = empty($tokens->id_token) || !is_string($tokens->id_token) ? null : $tokens->id_token;
         $idClaims = Protocol::decodeJwt($idToken);
         if ($idClaims !== null) {
-            if ($endpoints['jwksUrl'] !== '') {
-                $this->checkSignature($idToken, $endpoints['jwksUrl']);
+            if ($endpoints['jwksUrl'] !== '' && !$this->isSignedByProvider($idToken, $endpoints['jwksUrl'], true)) {
+                throw new Exception(Piwik::translate("RebelOIDC_ExceptionInvalidIdToken"));
             }
             Protocol::checkIdToken($idClaims, $settings->clientId->getValue(), $endpoints['issuer'], $nonce);
         }
 
-        $decodedToken = array_merge(Protocol::decodeJwt($tokens->access_token) ?? [], $idClaims ?? []);
+        $accessClaims = Protocol::decodeJwt($tokens->access_token) ?? [];
+        // With the keys of the provider known, roles and permissions only count when it signed them.
+        // Some providers sign access tokens with keys they do not publish, so this is not an error.
+        if ($accessClaims !== [] && $endpoints['jwksUrl'] !== '' && !$this->isSignedByProvider($tokens->access_token, $endpoints['jwksUrl'], false)) {
+            $accessClaims = [];
+        }
+        $decodedToken = array_merge($accessClaims, $idClaims ?? []);
 
         if ($readsIdToken && $idClaims === null) {
             throw new Exception(Piwik::translate("RebelOIDC_ExceptionInvalidResponse"));
@@ -350,21 +356,18 @@ class Controller extends \Piwik\Plugin\Controller
     }
 
     /**
-     * @throws Exception when the provider did not sign the ID token
+     * @param bool $mayAskForNewKeys whether to ask the provider for its keys again when none of the keys kept fits
      */
-    private function checkSignature(
+    private function isSignedByProvider(
         #[\SensitiveParameter]
-        string $idToken,
-        string $jwksUrl
-    ): void {
+        string $token,
+        string $jwksUrl,
+        bool $mayAskForNewKeys
+    ): bool {
         $provider = StaticContainer::get(Provider::class);
 
-        // A key that is not among the keys kept can be a new key of the provider.
-        $isValid = Signature::isValid($idToken, $provider->getKeys($jwksUrl))
-            || Signature::isValid($idToken, $provider->getKeys($jwksUrl, true));
-        if (!$isValid) {
-            throw new Exception(Piwik::translate("RebelOIDC_ExceptionInvalidIdToken"));
-        }
+        return Signature::isValid($token, $provider->getKeys($jwksUrl))
+            || ($mayAskForNewKeys && Signature::isValid($token, $provider->getKeys($jwksUrl, true)));
     }
 
     /**
