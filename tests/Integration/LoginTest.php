@@ -4,7 +4,9 @@ namespace Piwik\Plugins\RebelOIDC\tests\Integration;
 
 use Piwik\Config;
 use Piwik\Plugins\RebelOIDC\Protocol;
+use Piwik\Plugins\RebelOIDC\RebelOIDC;
 use Piwik\Plugins\UsersManager\Model;
+use Piwik\SettingsPiwik;
 use Piwik\Tests\Framework\Fixture;
 
 /**
@@ -129,6 +131,68 @@ class LoginTest extends OidcTestCase
 
         $this->assertStringContainsString(self::REDIRECT . 'index.php', $message);
         $this->assertSame(['anna' => 'anna'], $this->getLinks());
+    }
+
+    public function testAutoLinkingFindsTheMatomoUserByEmailWhenTheUserIdIsNotItsName()
+    {
+        $this->set(['autoLinking' => true]);
+
+        $message = $this->comeBack(['sub' => '8a1f-idp', 'email' => 'Anna@example.org', 'email_verified' => true]);
+
+        $this->assertStringContainsString(self::REDIRECT . 'index.php', $message);
+        $this->assertSame(['anna' => '8a1f-idp'], $this->getLinks());
+    }
+
+    public function testTheEmailIsReadFromTheAttributeThatIsSet()
+    {
+        $this->set(['allowSignup' => true, 'trustUnverifiedEmail' => true, 'emailAttribute' => 'mail']);
+
+        $this->comeBack(['sub' => 'idp-new', 'preferred_username' => 'newuser', 'mail' => 'new@example.org', 'email' => 'other@example.org']);
+
+        $this->assertSame('new@example.org', (new Model())->getUser('newuser')['email']);
+    }
+
+    public function testASettingInTheConfigFileIsUsedInsteadOfTheSavedOne()
+    {
+        Config::getInstance()->RebelOIDC = ['clientId' => 'from-config'];
+
+        parse_str((string) parse_url($this->signIn(), PHP_URL_QUERY), $sent);
+        Config::getInstance()->RebelOIDC = [];
+
+        $this->assertSame('from-config', $sent['client_id']);
+    }
+
+    /**
+     * @dataProvider getLogoutUrlsInTheConfig
+     */
+    public function testLoggingOutAtTheProviderSendsTheBrowserBack(?string $logoutUrl)
+    {
+        $this->set(['endSessionUrl' => 'https://idp.example/logout']);
+        $_SESSION['loginoidc_auth'] = true;
+        $_SESSION['loginoidc_idtoken'] = 'the-id-token';
+        $general = Config::getInstance()->General;
+        unset($general['login_logout_url']);
+        if ($logoutUrl !== null) {
+            $general['login_logout_url'] = $logoutUrl;
+        }
+        Config::getInstance()->General = $general;
+
+        (new RebelOIDC())->logoutMod();
+
+        $url = Config::getInstance()->General['login_logout_url'];
+        parse_str((string) parse_url($url, PHP_URL_QUERY), $sent);
+        $this->assertStringStartsWith('https://idp.example/logout?', $url);
+        $this->assertSame('the-id-token', $sent['id_token_hint']);
+        $this->assertSame($logoutUrl ?? SettingsPiwik::getPiwikUrl(), $sent['post_logout_redirect_uri']);
+        $this->assertNotEmpty($sent['post_logout_redirect_uri']);
+    }
+
+    public function getLogoutUrlsInTheConfig(): array
+    {
+        return [
+            'not set' => [null],
+            'set' => ['https://example.org/bye'],
+        ];
     }
 
     public function testAnAccountNobodyKnowsDoesNotTurnOffPasswordConfirmation()

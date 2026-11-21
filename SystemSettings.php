@@ -140,6 +140,13 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
     public $redirectUriOverride;
 
     /**
+     * The field of the provider that holds the email address.
+     *
+     * @var Setting
+     */
+    public $emailAttribute;
+
+    /**
      * Create username from attribute.
      *
      * @var Setting
@@ -217,6 +224,7 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
         $this->endSessionUrl = $this->createEndSessionUrlSetting();
         $this->issuer = $this->createIssuerSetting();
         $this->userInfoId = $this->createUserInfoIdSetting();
+        $this->emailAttribute = $this->createEmailAttributeSetting();
         $this->usernameAttribute = $this->createUsernameAttributeSetting();
         $this->fallbackToEmail = $this->createFallbackToEmailSetting();
         $this->clientId = $this->createClientIdSetting();
@@ -429,6 +437,16 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
         return $this->makeSetting("userInfoId", $default = "sub", FieldConfig::TYPE_STRING, function (FieldConfig $field) {
             $field->title = Piwik::translate("RebelOIDC_SettingUserInfoId");
             $field->description = Piwik::translate("RebelOIDC_SettingUserInfoIdHelp");
+            $field->uiControl = FieldConfig::UI_CONTROL_TEXT;
+            $field->validators[] = new NotEmpty();
+        });
+    }
+
+    private function createEmailAttributeSetting(): SystemSetting
+    {
+        return $this->makeSetting("emailAttribute", $default = "email", FieldConfig::TYPE_STRING, function (FieldConfig $field) {
+            $field->title = Piwik::translate("RebelOIDC_SettingEmailAttribute");
+            $field->description = Piwik::translate("RebelOIDC_SettingEmailAttributeHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_TEXT;
             $field->validators[] = new NotEmpty();
         });

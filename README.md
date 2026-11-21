@@ -28,7 +28,7 @@ The URLs of the provider have to start with `https://`. Set the `Issuer` of your
 
 A user that already exists in Matomo logs in with the password and links the account of the provider under Personal -> Security. Matomo asks for the password before linking.
 
-With `Enable auto linking` this happens at the first login instead, when the user ID of the provider is the Matomo username and the provider reports the email address of the Matomo user as verified.
+With `Enable auto linking` this happens at the first login instead, when the provider reports the email address of the Matomo user as verified.
 
 ### Username Attribute from OIDC
 

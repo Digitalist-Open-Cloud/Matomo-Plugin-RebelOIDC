@@ -19,6 +19,7 @@ use Piwik\Plugins\RebelOIDC\SystemSettings;
 use Piwik\Plugins\RebelOIDC\Url;
 use Piwik\Request;
 use Piwik\Session;
+use Piwik\SettingsPiwik;
 use Piwik\Plugin;
 
 class RebelOIDC extends Plugin
@@ -154,10 +155,10 @@ class RebelOIDC extends Plugin
             if (isset($_SESSION["loginoidc_idtoken"])) {
                 $endSessionUrl->setQueryParameter("id_token_hint", $_SESSION["loginoidc_idtoken"]);
             }
-            if (isset(Config::getInstance()->General['login_logout_url'])) {
-                $originalLogoutUrl = Config::getInstance()->General['login_logout_url'];
-                $endSessionUrl->setQueryParameter("post_logout_redirect_uri", $originalLogoutUrl);
-            }
+            $endSessionUrl->setQueryParameter(
+                "post_logout_redirect_uri",
+                Config::getInstance()->General['login_logout_url'] ?? SettingsPiwik::getPiwikUrl()
+            );
             Config::getInstance()->General['login_logout_url'] = $endSessionUrl->buildString();
         }
     }

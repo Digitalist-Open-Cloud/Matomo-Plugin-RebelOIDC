@@ -13,8 +13,17 @@
 - The authorize, token and userinfo URLs have to use HTTPS. `[RebelOIDC] allow_http = 1` in `config.ini.php` allows HTTP for a test setup.
 - The FAQ no longer recommends a redirect URI pattern that matches every URL.
 
+### Added
+
+- Setting "Email attribute", for providers that have the email address in another field than `email`. #21
+
+### Changed
+
+- Auto linking finds the Matomo user by the verified email address of the provider. The user ID of the provider no longer has to be the Matomo username. #14, #20
+
 ### Fixed
 
+- After logging out at the provider the browser is sent back to Matomo. #49
 - Login works when the access token is not a JWT, as with GitHub.
 - Tokens with characters outside ASCII in their claims are read correctly.
 
