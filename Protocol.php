@@ -134,6 +134,9 @@ class Protocol
             foreach ($path as $key) {
                 $value = is_array($value) ? ($value[$key] ?? null) : null;
             }
+            if (is_array($value) && !array_is_list($value)) {
+                $value = array_keys($value);
+            }
             foreach ((array) $value as $role) {
                 if (is_string($role)) {
                     $roles[] = $role;
