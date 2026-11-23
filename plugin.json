@@ -1,6 +1,6 @@
 {
     "name": "RebelOIDC",
-    "version": "5.2.0",
+    "version": "5.2.1",
     "description": "Adds OIDC login to your Matomo instance",
     "keywords": [
         "authentication",
