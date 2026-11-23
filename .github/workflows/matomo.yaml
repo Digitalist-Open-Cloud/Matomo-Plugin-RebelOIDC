@@ -32,7 +32,7 @@ jobs:
       - name: Run tests
         env:
           KEYCLOAK_URL: http://localhost:8080
-        uses: Digitalist-Open-Cloud/Matomo-github-action-tests@main
+        uses: Digitalist-Open-Cloud/Matomo-github-action-tests@improvements
         with:
           plugin-name: 'RebelOIDC'
           php-version: ${{ matrix.php }}
