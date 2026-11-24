@@ -42,6 +42,13 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
     public $disableDirectLoginUrl;
 
     /**
+     * Whether to hide standard password login form.
+     *
+     * @var bool
+     */
+    public $hidePasswordLogin;
+
+    /**
      * Whether new Matomo accounts should be created for unknown users
      *
      * @var Setting
@@ -255,6 +262,7 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
         $this->disableSuperuser = $this->createDisableSuperuserSetting();
         $this->disablePasswordConfirmation = $this->createDisablePasswordConfirmationSetting();
         $this->disableDirectLoginUrl = $this->createDisableDirectLoginUrlSetting();
+        $this->hidePasswordLogin = $this->createHidePasswordLoginSetting();
         $this->allowSignup = $this->createAllowSignupSetting();
         $this->bypassTwoFa = $this->createBypassTwoFaSetting();
         $this->autoLinking = $this->createAutoLinkingSetting();
@@ -407,6 +415,20 @@ class SystemSettings extends \Piwik\Settings\Plugin\SystemSettings
         return $this->makeSetting("disableDirectLoginUrl", $default = true, FieldConfig::TYPE_BOOL, function (FieldConfig $field) {
             $field->title = Piwik::translate("RebelOIDC_SettingDisableDirectLoginUrl");
             $field->description = Piwik::translate("RebelOIDC_SettingDisableDirectLoginUrlHelp");
+            $field->uiControl = FieldConfig::UI_CONTROL_CHECKBOX;
+        });
+    }
+
+    /**
+     * Add hide password login setting.
+     *
+     * @return SystemSetting
+     */
+    private function createHidePasswordLoginSetting() : SystemSetting
+    {
+        return $this->makeSetting("hidePasswordLogin", $default = false, FieldConfig::TYPE_BOOL, function(FieldConfig $field) {
+            $field->title = Piwik::translate("LoginOIDC_SettingHidePasswordLogin");
+            $field->description = Piwik::translate("LoginOIDC_SettingHidePasswordLoginHelp");
             $field->uiControl = FieldConfig::UI_CONTROL_CHECKBOX;
         });
     }
