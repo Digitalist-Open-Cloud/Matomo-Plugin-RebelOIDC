@@ -1,5 +1,11 @@
 # Change Log
 
+## [6.0.0] - 2026-11-24
+
+### Changed
+
+- Requires Matomo 6 and PHP 8.1. The code of 5.2.1 runs unchanged: it uses none of the APIs the [Matomo 5 to 6 migration guide](https://developer.matomo.org/guides/migrate-matomo-5-to-6) removes. Matomo 5 installs stay on the 5.x releases. Closes #54.
+
 ## [5.2.0] - 2026-11-21
 
 ### Security
