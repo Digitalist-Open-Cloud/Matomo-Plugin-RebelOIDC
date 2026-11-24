@@ -81,7 +81,14 @@ class RebelOIDC extends Plugin
      */
     public function getStylesheetFiles(array &$files)
     {
+        $settings = new SystemSettings();
+        $hidePasswordLogin = $settings->hidePasswordLogin->getValue();
+
         $files[] = "plugins/RebelOIDC/stylesheets/loginMod.css";
+
+        if ($hidePasswordLogin) {
+            $files[] = "plugins/RebelOIDC/stylesheets/loginModHidePwLogin.css";
+        }
     }
 
     /**
